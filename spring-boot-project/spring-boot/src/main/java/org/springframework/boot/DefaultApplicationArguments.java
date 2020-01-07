@@ -70,6 +70,9 @@ public class DefaultApplicationArguments implements ApplicationArguments {
 		return this.source.getNonOptionArgs();
 	}
 
+	/**
+	 * 命令行配置类.
+	 */
 	private static class Source extends SimpleCommandLinePropertySource {
 
 		Source(String[] args) {
