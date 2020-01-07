@@ -22,11 +22,14 @@ import java.util.List;
 
 import org.apache.commons.logging.Log;
 
+import org.springframework.context.ApplicationListener;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.util.ReflectionUtils;
 
 /**
+ * 最后还是回调{@link ApplicationListener}实现。
+ *
  * A collection of {@link SpringApplicationRunListener}.
  *
  * @author Phillip Webb

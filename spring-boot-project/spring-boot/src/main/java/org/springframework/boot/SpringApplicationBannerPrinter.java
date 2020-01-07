@@ -72,6 +72,15 @@ class SpringApplicationBannerPrinter {
 		return new PrintedBanner(banner, sourceClass);
 	}
 
+	/**
+	 * 获取banner对象。
+	 * 1. 有ImageBanner或者TestBanner，返回
+	 * 2. 否则有设置的banner，返回
+	 * 3. 否则返回默认banner对象{@link SpringBootBanner}。
+	 *
+	 * @param environment
+	 * @return
+	 */
 	private Banner getBanner(Environment environment) {
 		Banners banners = new Banners();
 		banners.addIfNotNull(getImageBanner(environment));
@@ -85,6 +94,12 @@ class SpringApplicationBannerPrinter {
 		return DEFAULT_BANNER;
 	}
 
+	/**
+	 * 从banner.txt文件中读取文本banner内容。
+	 *
+	 * @param environment
+	 * @return
+	 */
 	private Banner getTextBanner(Environment environment) {
 		String location = environment.getProperty(BANNER_LOCATION_PROPERTY, DEFAULT_BANNER_LOCATION);
 		Resource resource = this.resourceLoader.getResource(location);
@@ -94,6 +109,16 @@ class SpringApplicationBannerPrinter {
 		return null;
 	}
 
+	/**
+	 * 1. 读取spring.banner.image.location配置值
+	 * 2. 如果值存在，加载该资源
+	 * 3. 如果资源存在，返回图片banner对象
+	 * 4. 如果值不存在，读取文件名为banner，类型为"gif"、"jpg"、"png"的文件
+	 * 5. 如果资源存在，返回图片banner对象
+	 *
+	 * @param environment
+	 * @return
+	 */
 	private Banner getImageBanner(Environment environment) {
 		String location = environment.getProperty(BANNER_IMAGE_LOCATION_PROPERTY);
 		if (StringUtils.hasLength(location)) {

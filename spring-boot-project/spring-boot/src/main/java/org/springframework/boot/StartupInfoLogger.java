@@ -33,6 +33,7 @@ import org.springframework.util.StopWatch;
 import org.springframework.util.StringUtils;
 
 /**
+ * 打印应用启动时日志信息。
  * Logs application information on startup.
  *
  * @author Phillip Webb
@@ -62,6 +63,11 @@ class StartupInfoLogger {
 		}
 	}
 
+	/**
+	 * 打印启动信息。
+	 * 格式为"Starting ${ApplicationName} on ${hostname} with PID ${pid}(${classPath} started by ${username} in ${projectDir})"
+	 * @return
+	 */
 	private CharSequence getStartingMessage() {
 		StringBuilder message = new StringBuilder();
 		message.append("Starting ");
@@ -82,6 +88,12 @@ class StartupInfoLogger {
 		return message;
 	}
 
+	/**
+	 * 应用启动之后打印耗时信息。
+	 * 格式为 "Started ${applicationName} in ${costTime} seconds (JVM running for ${JVM_time})"
+	 * @param stopWatch
+	 * @return
+	 */
 	private CharSequence getStartedMessage(StopWatch stopWatch) {
 		StringBuilder message = new StringBuilder();
 		message.append("Started ");
@@ -99,6 +111,11 @@ class StartupInfoLogger {
 		return message;
 	}
 
+	/**
+	 * 添加应用名。
+	 *
+	 * @param message
+	 */
 	private void appendApplicationName(StringBuilder message) {
 		String name = (this.sourceClass != null) ? ClassUtils.getShortName(this.sourceClass) : "application";
 		message.append(name);

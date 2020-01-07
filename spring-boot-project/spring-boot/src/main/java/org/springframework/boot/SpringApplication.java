@@ -201,10 +201,17 @@ public class SpringApplication {
 
 	private Set<String> sources = new LinkedHashSet<>();
 
+	/**
+	 * 启动类。
+	 */
 	private Class<?> mainApplicationClass;
-
+	/**
+	 * banner打印模式。
+	 */
 	private Banner.Mode bannerMode = Banner.Mode.CONSOLE;
-
+	/**
+	 * 输入启动日志开关。
+	 */
 	private boolean logStartupInfo = true;
 
 	private boolean addCommandLineProperties = true;
@@ -220,9 +227,13 @@ public class SpringApplication {
 	private ConfigurableEnvironment environment;
 
 	private Class<? extends ConfigurableApplicationContext> applicationContextClass;
-
+	/**
+	 * web应用类型。
+	 */
 	private WebApplicationType webApplicationType;
-
+	/**
+	 * java.awt.headless默认值。
+	 */
 	private boolean headless = true;
 
 	private boolean registerShutdownHook = true;
@@ -284,6 +295,11 @@ public class SpringApplication {
 		this.mainApplicationClass = deduceMainApplicationClass();
 	}
 
+	/**
+	 * 获取应用启动类。
+	 *
+	 * @return
+	 */
 	private Class<?> deduceMainApplicationClass() {
 		try {
 			StackTraceElement[] stackTrace = new RuntimeException().getStackTrace();
@@ -393,6 +409,11 @@ public class SpringApplication {
 		return environment;
 	}
 
+	/**
+	 * 根据web类型获取Environment类型。
+	 *
+	 * @return
+	 */
 	private Class<? extends StandardEnvironment> deduceEnvironmentClass() {
 		switch (this.webApplicationType) {
 		case SERVLET:
@@ -664,6 +685,12 @@ public class SpringApplication {
 		}
 	}
 
+	/**
+	 * 根据bannerMode类型输出banner信息。
+	 *
+	 * @param environment
+	 * @return
+	 */
 	private Banner printBanner(ConfigurableEnvironment environment) {
 		if (this.bannerMode == Banner.Mode.OFF) {
 			return null;
