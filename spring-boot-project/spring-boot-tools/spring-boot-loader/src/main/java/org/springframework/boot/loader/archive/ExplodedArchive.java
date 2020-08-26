@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2019 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -55,7 +55,7 @@ public class ExplodedArchive implements Archive {
 
 	/**
 	 * Create a new {@link ExplodedArchive} instance.
-	 * @param root the root folder
+	 * @param root the root directory
 	 */
 	public ExplodedArchive(File root) {
 		this(root, true);
@@ -63,15 +63,14 @@ public class ExplodedArchive implements Archive {
 
 	/**
 	 * Create a new {@link ExplodedArchive} instance.
-	 * @param root the root folder
+	 * @param root the root directory
 	 * @param recursive if recursive searching should be used to locate the manifest.
-	 * Defaults to {@code true}, folders with a large tree might want to set this to
-	 * {@code
-	 * false}.
+	 * Defaults to {@code true}, directories with a large tree might want to set this to
+	 * {@code false}.
 	 */
 	public ExplodedArchive(File root, boolean recursive) {
 		if (!root.exists() || !root.isDirectory()) {
-			throw new IllegalArgumentException("Invalid source folder " + root);
+			throw new IllegalArgumentException("Invalid source directory " + root);
 		}
 		this.root = root;
 		this.recursive = recursive;
@@ -104,6 +103,7 @@ public class ExplodedArchive implements Archive {
 	}
 
 	@Override
+	@Deprecated
 	public Iterator<Entry> iterator() {
 		return new EntryIterator(this.root, this.recursive, null, null);
 	}
@@ -114,8 +114,8 @@ public class ExplodedArchive implements Archive {
 	}
 
 	@Override
-	public boolean supportsNestedJars() {
-		return false;
+	public boolean isExploded() {
+		return true;
 	}
 
 	@Override
@@ -322,6 +322,7 @@ public class ExplodedArchive implements Archive {
 		}
 
 		@Override
+		@Deprecated
 		public Iterator<Entry> iterator() {
 			return Collections.emptyIterator();
 		}

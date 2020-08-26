@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2019 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -99,7 +99,6 @@ import static org.mockito.Mockito.verify;
 /**
  * Tests for {@link ConfigurationProperties @ConfigurationProperties}-annotated beans.
  * Covers {@link EnableConfigurationProperties @EnableConfigurationProperties},
- * {@link ConfigurationPropertiesBindingPostProcessorRegistrar},
  * {@link ConfigurationPropertiesBindingPostProcessor} and
  * {@link ConfigurationPropertiesBinder}.
  *
@@ -258,7 +257,7 @@ class ConfigurationPropertiesTests {
 		AnnotationConfigApplicationContext parent = load(BasicConfiguration.class, "name=parent");
 		this.context = new AnnotationConfigApplicationContext();
 		this.context.setParent(parent);
-		load(new Class[] { BasicConfiguration.class, BasicPropertiesConsumer.class }, "name=child");
+		load(new Class<?>[] { BasicConfiguration.class, BasicPropertiesConsumer.class }, "name=child");
 		assertThat(this.context.getBean(BasicProperties.class)).isNotNull();
 		assertThat(parent.getBean(BasicProperties.class)).isNotNull();
 		assertThat(this.context.getBean(BasicPropertiesConsumer.class).getName()).isEqualTo("parent");

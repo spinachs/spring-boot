@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2019 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,11 +16,11 @@
 
 package org.springframework.boot.web.embedded.netty;
 
+import java.net.ConnectException;
 import java.time.Duration;
 import java.util.Arrays;
 
-import javax.net.ssl.SSLHandshakeException;
-
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import reactor.core.publisher.Mono;
@@ -30,6 +30,7 @@ import reactor.test.StepVerifier;
 import org.springframework.boot.web.reactive.server.AbstractReactiveWebServerFactory;
 import org.springframework.boot.web.reactive.server.AbstractReactiveWebServerFactoryTests;
 import org.springframework.boot.web.server.PortInUseException;
+import org.springframework.boot.web.server.Shutdown;
 import org.springframework.boot.web.server.Ssl;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
@@ -64,7 +65,7 @@ class NettyReactiveWebServerFactoryTests extends AbstractReactiveWebServerFactor
 		this.webServer.start();
 		factory.setPort(this.webServer.getPort());
 		assertThatExceptionOfType(PortInUseException.class).isThrownBy(factory.getWebServer(new EchoHandler())::start)
-				.satisfies(this::portMatchesRequirement);
+				.satisfies(this::portMatchesRequirement).withCauseInstanceOf(Throwable.class);
 	}
 
 	private void portMatchesRequirement(PortInUseException exception) {
@@ -102,11 +103,26 @@ class NettyReactiveWebServerFactoryTests extends AbstractReactiveWebServerFactor
 	}
 
 	@Test
-	void whenSslIsConfiguredWithAnInvalidAliasTheSslHandshakeFails() {
-		Mono<String> result = testSslWithAlias("test-alias-bad");
-		StepVerifier.setDefaultTimeout(Duration.ofSeconds(30));
-		StepVerifier.create(result).expectErrorMatches((throwable) -> throwable instanceof SSLHandshakeException
-				&& throwable.getMessage().contains("HANDSHAKE_FAILURE")).verify();
+	void whenServerIsShuttingDownGracefullyThenNewConnectionsCannotBeMade() throws Exception {
+		NettyReactiveWebServerFactory factory = getFactory();
+		factory.setShutdown(Shutdown.GRACEFUL);
+		BlockingHandler blockingHandler = new BlockingHandler();
+		this.webServer = factory.getWebServer(blockingHandler);
+		this.webServer.start();
+		WebClient webClient = getWebClient(this.webServer.getPort()).build();
+		this.webServer.shutDownGracefully((result) -> {
+		});
+		Awaitility.await().atMost(Duration.ofSeconds(30)).until(() -> {
+			blockingHandler.stopBlocking();
+			try {
+				webClient.get().retrieve().toBodilessEntity().block();
+				return false;
+			}
+			catch (RuntimeException ex) {
+				return ex.getCause() instanceof ConnectException;
+			}
+		});
+		this.webServer.stop();
 	}
 
 	protected Mono<String> testSslWithAlias(String alias) {
@@ -123,9 +139,8 @@ class NettyReactiveWebServerFactoryTests extends AbstractReactiveWebServerFactor
 		ReactorClientHttpConnector connector = buildTrustAllSslConnector();
 		WebClient client = WebClient.builder().baseUrl("https://localhost:" + this.webServer.getPort())
 				.clientConnector(connector).build();
-		return client.post().uri("/test").contentType(MediaType.TEXT_PLAIN)
-				.body(BodyInserters.fromObject("Hello World")).exchange()
-				.flatMap((response) -> response.bodyToMono(String.class));
+		return client.post().uri("/test").contentType(MediaType.TEXT_PLAIN).body(BodyInserters.fromValue("Hello World"))
+				.exchange().flatMap((response) -> response.bodyToMono(String.class));
 	}
 
 }

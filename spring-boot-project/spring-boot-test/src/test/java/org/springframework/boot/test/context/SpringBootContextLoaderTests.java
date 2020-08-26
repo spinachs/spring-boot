@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2019 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,8 +21,8 @@ import java.util.Map;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.env.Environment;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.MergedContextConfiguration;
@@ -43,41 +43,41 @@ class SpringBootContextLoaderTests {
 
 	@Test
 	void environmentPropertiesSimple() {
-		Map<String, Object> config = getEnvironmentProperties(SimpleConfig.class);
+		Map<String, Object> config = getMergedContextConfigurationProperties(SimpleConfig.class);
 		assertKey(config, "key", "myValue");
 		assertKey(config, "anotherKey", "anotherValue");
 	}
 
 	@Test
 	void environmentPropertiesSimpleNonAlias() {
-		Map<String, Object> config = getEnvironmentProperties(SimpleConfigNonAlias.class);
+		Map<String, Object> config = getMergedContextConfigurationProperties(SimpleConfigNonAlias.class);
 		assertKey(config, "key", "myValue");
 		assertKey(config, "anotherKey", "anotherValue");
 	}
 
 	@Test
 	void environmentPropertiesOverrideDefaults() {
-		Map<String, Object> config = getEnvironmentProperties(OverrideConfig.class);
+		Map<String, Object> config = getMergedContextConfigurationProperties(OverrideConfig.class);
 		assertKey(config, "server.port", "2345");
 	}
 
 	@Test
 	void environmentPropertiesAppend() {
-		Map<String, Object> config = getEnvironmentProperties(AppendConfig.class);
+		Map<String, Object> config = getMergedContextConfigurationProperties(AppendConfig.class);
 		assertKey(config, "key", "myValue");
 		assertKey(config, "otherKey", "otherValue");
 	}
 
 	@Test
 	void environmentPropertiesSeparatorInValue() {
-		Map<String, Object> config = getEnvironmentProperties(SameSeparatorInValue.class);
+		Map<String, Object> config = getMergedContextConfigurationProperties(SameSeparatorInValue.class);
 		assertKey(config, "key", "my=Value");
 		assertKey(config, "anotherKey", "another:Value");
 	}
 
 	@Test
 	void environmentPropertiesAnotherSeparatorInValue() {
-		Map<String, Object> config = getEnvironmentProperties(AnotherSeparatorInValue.class);
+		Map<String, Object> config = getMergedContextConfigurationProperties(AnotherSeparatorInValue.class);
 		assertKey(config, "key", "my:Value");
 		assertKey(config, "anotherKey", "another=Value");
 	}
@@ -86,43 +86,37 @@ class SpringBootContextLoaderTests {
 	@Disabled
 	void environmentPropertiesNewLineInValue() {
 		// gh-4384
-		Map<String, Object> config = getEnvironmentProperties(NewLineInValue.class);
+		Map<String, Object> config = getMergedContextConfigurationProperties(NewLineInValue.class);
 		assertKey(config, "key", "myValue");
 		assertKey(config, "variables", "foo=FOO\n bar=BAR");
 	}
 
 	@Test
 	void noActiveProfiles() {
-		Environment environment = getApplicationEnvironment(SimpleConfig.class);
-		assertThat(environment.getActiveProfiles()).isEmpty();
+		assertThat(getActiveProfiles(SimpleConfig.class)).isEmpty();
 	}
 
 	@Test
 	void multipleActiveProfiles() {
-		Environment environment = getApplicationEnvironment(MultipleActiveProfiles.class);
-		assertThat(environment.getActiveProfiles()).containsExactly("profile1", "profile2");
+		assertThat(getActiveProfiles(MultipleActiveProfiles.class)).containsExactly("profile1", "profile2");
 	}
 
 	@Test
 	void activeProfileWithComma() {
-		Environment environment = getApplicationEnvironment(ActiveProfileWithComma.class);
-		assertThat(environment.getActiveProfiles()).containsExactly("profile1,2");
+		assertThat(getActiveProfiles(ActiveProfileWithComma.class)).containsExactly("profile1,2");
 	}
 
-	private Map<String, Object> getEnvironmentProperties(Class<?> testClass) {
-		TestContext context = getTestContext(testClass);
+	private String[] getActiveProfiles(Class<?> testClass) {
+		TestContext testContext = new ExposedTestContextManager(testClass).getExposedTestContext();
+		ApplicationContext applicationContext = testContext.getApplicationContext();
+		return applicationContext.getEnvironment().getActiveProfiles();
+	}
+
+	private Map<String, Object> getMergedContextConfigurationProperties(Class<?> testClass) {
+		TestContext context = new ExposedTestContextManager(testClass).getExposedTestContext();
 		MergedContextConfiguration config = (MergedContextConfiguration) ReflectionTestUtils.getField(context,
 				"mergedContextConfiguration");
 		return TestPropertySourceUtils.convertInlinedPropertiesToMap(config.getPropertySourceProperties());
-	}
-
-	private Environment getApplicationEnvironment(Class<?> testClass) {
-		TestContext context = getTestContext(testClass);
-		return context.getApplicationContext().getEnvironment();
-	}
-
-	private TestContext getTestContext(Class<?> testClass) {
-		return new ExposedTestContextManager(testClass).getExposedTestContext();
 	}
 
 	private void assertKey(Map<String, Object> actual, String key, Object value) {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2019 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,12 +23,9 @@ import java.util.List;
 import org.springframework.beans.BeanUtils;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.WebApplicationType;
-import org.springframework.boot.context.properties.bind.Bindable;
-import org.springframework.boot.context.properties.bind.Binder;
-import org.springframework.boot.context.properties.source.ConfigurationPropertySource;
-import org.springframework.boot.context.properties.source.MapConfigurationPropertySource;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.mock.web.SpringBootMockServletContext;
+import org.springframework.boot.test.util.TestPropertyValues;
 import org.springframework.boot.web.reactive.context.GenericReactiveWebApplicationContext;
 import org.springframework.boot.web.servlet.support.ServletContextApplicationContextInitializer;
 import org.springframework.context.ApplicationContext;
@@ -81,8 +78,6 @@ import org.springframework.web.context.support.GenericWebApplicationContext;
  */
 public class SpringBootContextLoader extends AbstractContextLoader {
 
-	private static final String[] NO_ARGS = new String[0];
-
 	@Override
 	public ApplicationContext loadContext(MergedContextConfiguration config) throws Exception {
 		Class<?>[] configClasses = config.getClasses();
@@ -97,7 +92,7 @@ public class SpringBootContextLoader extends AbstractContextLoader {
 		application.getSources().addAll(Arrays.asList(configLocations));
 		ConfigurableEnvironment environment = getEnvironment();
 		if (!ObjectUtils.isEmpty(config.getActiveProfiles())) {
-			environment.setActiveProfiles(config.getActiveProfiles());
+			setActiveProfiles(environment, config.getActiveProfiles());
 		}
 		ResourceLoader resourceLoader = (application.getResourceLoader() != null) ? application.getResourceLoader()
 				: new DefaultResourceLoader(getClass().getClassLoader());
@@ -148,11 +143,22 @@ public class SpringBootContextLoader extends AbstractContextLoader {
 	 * empty array.
 	 * @param config the source context configuration
 	 * @return the application arguments to use
+	 * @deprecated since 2.2.7
 	 * @see SpringApplication#run(String...)
 	 */
+	@Deprecated
 	protected String[] getArgs(MergedContextConfiguration config) {
-		return MergedAnnotations.from(config.getTestClass(), SearchStrategy.TYPE_HIERARCHY).get(SpringBootTest.class)
-				.getValue("args", String[].class).orElse(NO_ARGS);
+		return SpringBootTestArgs.get(config.getContextCustomizers());
+	}
+
+	private void setActiveProfiles(ConfigurableEnvironment environment, String[] profiles) {
+		environment.setActiveProfiles(profiles);
+		// Also add as properties to override any application.properties
+		String[] pairs = new String[profiles.length];
+		for (int i = 0; i < profiles.length; i++) {
+			pairs[i] = "spring.profiles.active[" + i + "]=" + profiles[i];
+		}
+		TestPropertyValues.of(pairs).applyTo(environment);
 	}
 
 	protected String[] getInlinedProperties(MergedContextConfiguration config) {
@@ -160,24 +166,11 @@ public class SpringBootContextLoader extends AbstractContextLoader {
 		// JMX bean names will clash if the same bean is used in multiple contexts
 		disableJmx(properties);
 		properties.addAll(Arrays.asList(config.getPropertySourceProperties()));
-		if (!isEmbeddedWebEnvironment(config) && !hasCustomServerPort(properties)) {
-			properties.add("server.port=-1");
-		}
 		return StringUtils.toStringArray(properties);
 	}
 
 	private void disableJmx(List<String> properties) {
 		properties.add("spring.jmx.enabled=false");
-	}
-
-	private boolean hasCustomServerPort(List<String> properties) {
-		Binder binder = new Binder(convertToConfigurationPropertySource(properties));
-		return binder.bind("server.port", Bindable.of(String.class)).isBound();
-	}
-
-	private ConfigurationPropertySource convertToConfigurationPropertySource(List<String> properties) {
-		return new MapConfigurationPropertySource(
-				TestPropertySourceUtils.convertInlinedPropertiesToMap(StringUtils.toStringArray(properties)));
 	}
 
 	/**
