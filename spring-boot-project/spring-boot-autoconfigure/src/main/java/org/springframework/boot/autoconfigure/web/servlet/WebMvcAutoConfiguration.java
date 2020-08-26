@@ -56,6 +56,7 @@ import org.springframework.boot.autoconfigure.web.format.WebConversionService;
 import org.springframework.boot.autoconfigure.web.servlet.WebMvcProperties.Format;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.convert.ApplicationConversionService;
+import org.springframework.boot.web.servlet.ServletRegistrationBean;
 import org.springframework.boot.web.servlet.filter.OrderedFormContentFilter;
 import org.springframework.boot.web.servlet.filter.OrderedHiddenHttpMethodFilter;
 import org.springframework.boot.web.servlet.filter.OrderedRequestContextFilter;
@@ -119,6 +120,7 @@ import org.springframework.web.servlet.view.BeanNameViewResolver;
 import org.springframework.web.servlet.view.ContentNegotiatingViewResolver;
 import org.springframework.web.servlet.view.InternalResourceViewResolver;
 import org.springframework.web.util.UrlPathHelper;
+import org.springframework.web.util.pattern.PathPatternParser;
 
 /**
  * {@link EnableAutoConfiguration Auto-configuration} for {@link EnableWebMvc Web MVC}.
@@ -190,18 +192,23 @@ public class WebMvcAutoConfiguration {
 
 		private final ObjectProvider<DispatcherServletPath> dispatcherServletPath;
 
+		private final ObjectProvider<ServletRegistrationBean<?>> servletRegistrations;
+
 		final ResourceHandlerRegistrationCustomizer resourceHandlerRegistrationCustomizer;
 
 		public WebMvcAutoConfigurationAdapter(ResourceProperties resourceProperties, WebMvcProperties mvcProperties,
 				ListableBeanFactory beanFactory, ObjectProvider<HttpMessageConverters> messageConvertersProvider,
 				ObjectProvider<ResourceHandlerRegistrationCustomizer> resourceHandlerRegistrationCustomizerProvider,
-				ObjectProvider<DispatcherServletPath> dispatcherServletPath) {
+				ObjectProvider<DispatcherServletPath> dispatcherServletPath,
+				ObjectProvider<ServletRegistrationBean<?>> servletRegistrations) {
 			this.resourceProperties = resourceProperties;
 			this.mvcProperties = mvcProperties;
 			this.beanFactory = beanFactory;
 			this.messageConvertersProvider = messageConvertersProvider;
 			this.resourceHandlerRegistrationCustomizer = resourceHandlerRegistrationCustomizerProvider.getIfAvailable();
 			this.dispatcherServletPath = dispatcherServletPath;
+			this.servletRegistrations = servletRegistrations;
+			this.mvcProperties.checkConfiguration();
 		}
 
 		@Override
@@ -228,17 +235,26 @@ public class WebMvcAutoConfiguration {
 		@Override
 		@SuppressWarnings("deprecation")
 		public void configurePathMatch(PathMatchConfigurer configurer) {
+			if (this.mvcProperties.getPathmatch()
+					.getMatchingStrategy() == WebMvcProperties.MatchingStrategy.PATH_PATTERN_PARSER) {
+				configurer.setPatternParser(new PathPatternParser());
+			}
 			configurer.setUseSuffixPatternMatch(this.mvcProperties.getPathmatch().isUseSuffixPattern());
 			configurer.setUseRegisteredSuffixPatternMatch(
 					this.mvcProperties.getPathmatch().isUseRegisteredSuffixPattern());
 			this.dispatcherServletPath.ifAvailable((dispatcherPath) -> {
 				String servletUrlMapping = dispatcherPath.getServletUrlMapping();
-				if (servletUrlMapping.equals("/")) {
+				if (servletUrlMapping.equals("/") && singleDispatcherServlet()) {
 					UrlPathHelper urlPathHelper = new UrlPathHelper();
 					urlPathHelper.setAlwaysUseFullPath(true);
 					configurer.setUrlPathHelper(urlPathHelper);
 				}
 			});
+		}
+
+		private boolean singleDispatcherServlet() {
+			return this.servletRegistrations.stream().map(ServletRegistrationBean::getServlet)
+					.filter(DispatcherServlet.class::isInstance).count() == 1;
 		}
 
 		@Override
@@ -282,18 +298,6 @@ public class WebMvcAutoConfiguration {
 			// a view so it should have a high precedence
 			resolver.setOrder(Ordered.HIGHEST_PRECEDENCE);
 			return resolver;
-		}
-
-		@Bean
-		@ConditionalOnMissingBean
-		@ConditionalOnProperty(prefix = "spring.mvc", name = "locale")
-		public LocaleResolver localeResolver() {
-			if (this.mvcProperties.getLocaleResolver() == WebMvcProperties.LocaleResolver.FIXED) {
-				return new FixedLocaleResolver(this.mvcProperties.getLocale());
-			}
-			AcceptHeaderLocaleResolver localeResolver = new AcceptHeaderLocaleResolver();
-			localeResolver.setDefaultLocale(this.mvcProperties.getLocale());
-			return localeResolver;
 		}
 
 		@Override
@@ -418,6 +422,19 @@ public class WebMvcAutoConfiguration {
 			welcomePageHandlerMapping.setInterceptors(getInterceptors(mvcConversionService, mvcResourceUrlProvider));
 			welcomePageHandlerMapping.setCorsConfigurations(getCorsConfigurations());
 			return welcomePageHandlerMapping;
+		}
+
+		@Override
+		@Bean
+		@ConditionalOnMissingBean
+		@ConditionalOnProperty(prefix = "spring.mvc", name = "locale", matchIfMissing = true)
+		public LocaleResolver localeResolver() {
+			if (this.mvcProperties.getLocaleResolver() == WebMvcProperties.LocaleResolver.FIXED) {
+				return new FixedLocaleResolver(this.mvcProperties.getLocale());
+			}
+			AcceptHeaderLocaleResolver localeResolver = new AcceptHeaderLocaleResolver();
+			localeResolver.setDefaultLocale(this.mvcProperties.getLocale());
+			return localeResolver;
 		}
 
 		private Optional<Resource> getWelcomePage() {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2019 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -107,7 +107,7 @@ public class ArtifactoryService {
 			ResponseEntity<BuildInfoResponse> entity = this.restTemplate
 					.getForEntity(BUILD_INFO_URL + buildName + "/" + buildNumber, BuildInfoResponse.class);
 			BuildInfoResponse.Status status = entity.getBody().getBuildInfo().getStatuses()[0];
-			logger.debug("Reutned repository " + status.getRepository() + " expecting " + targetRepo);
+			logger.debug("Returned repository " + status.getRepository() + " expecting " + targetRepo);
 			return status.getRepository().equals(targetRepo);
 		}
 		catch (HttpClientErrorException ex) {

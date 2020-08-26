@@ -46,7 +46,6 @@ import org.springframework.util.SocketUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.will;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -76,7 +75,7 @@ class NettyRSocketServerFactoryTests {
 			}
 		}
 		if (this.requester != null) {
-			this.requester.rsocket().dispose();
+			this.requester.rsocketClient().dispose();
 		}
 	}
 
@@ -129,24 +128,6 @@ class NettyRSocketServerFactoryTests {
 	}
 
 	@Test
-	@Deprecated
-	void serverProcessors() {
-		NettyRSocketServerFactory factory = getFactory();
-		org.springframework.boot.rsocket.server.ServerRSocketFactoryProcessor[] processors = new org.springframework.boot.rsocket.server.ServerRSocketFactoryProcessor[2];
-		for (int i = 0; i < processors.length; i++) {
-			processors[i] = mock(org.springframework.boot.rsocket.server.ServerRSocketFactoryProcessor.class);
-			given(processors[i].process(any(io.rsocket.RSocketFactory.ServerRSocketFactory.class)))
-					.will((invocation) -> invocation.getArgument(0));
-		}
-		factory.setSocketFactoryProcessors(Arrays.asList(processors));
-		this.server = factory.create(new EchoRequestResponseAcceptor());
-		InOrder ordered = inOrder((Object[]) processors);
-		for (org.springframework.boot.rsocket.server.ServerRSocketFactoryProcessor processor : processors) {
-			ordered.verify(processor).process(any(io.rsocket.RSocketFactory.ServerRSocketFactory.class));
-		}
-	}
-
-	@Test
 	void serverCustomizers() {
 		NettyRSocketServerFactory factory = getFactory();
 		RSocketServerCustomizer[] customizers = new RSocketServerCustomizer[2];
@@ -166,13 +147,13 @@ class NettyRSocketServerFactoryTests {
 	private RSocketRequester createRSocketTcpClient() {
 		Assertions.assertThat(this.server).isNotNull();
 		InetSocketAddress address = this.server.address();
-		return createRSocketRequesterBuilder().connectTcp(address.getHostString(), address.getPort()).block();
+		return createRSocketRequesterBuilder().tcp(address.getHostString(), address.getPort());
 	}
 
 	private RSocketRequester createRSocketWebSocketClient() {
 		Assertions.assertThat(this.server).isNotNull();
 		InetSocketAddress address = this.server.address();
-		return createRSocketRequesterBuilder().connect(WebsocketClientTransport.create(address)).block();
+		return createRSocketRequesterBuilder().transport(WebsocketClientTransport.create(address));
 	}
 
 	private RSocketRequester.Builder createRSocketRequesterBuilder() {
@@ -198,7 +179,6 @@ class NettyRSocketServerFactoryTests {
 	static class EchoRequestResponseAcceptor implements SocketAcceptor {
 
 		@Override
-		@SuppressWarnings("deprecation")
 		public Mono<RSocket> accept(ConnectionSetupPayload setupPayload, RSocket rSocket) {
 			return Mono.just(new RSocket() {
 				@Override

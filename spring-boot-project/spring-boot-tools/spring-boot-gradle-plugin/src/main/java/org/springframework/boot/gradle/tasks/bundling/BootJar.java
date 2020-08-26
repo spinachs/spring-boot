@@ -27,10 +27,11 @@ import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.FileCopyDetails;
 import org.gradle.api.file.FileTreeElement;
 import org.gradle.api.internal.file.copy.CopyAction;
+import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.specs.Spec;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Nested;
-import org.gradle.api.tasks.Optional;
+import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.bundling.Jar;
 
 /**
@@ -62,7 +63,7 @@ public class BootJar extends Jar implements BootArchive {
 
 	private FileCollection classpath;
 
-	private LayeredSpec layered;
+	private LayeredSpec layered = new LayeredSpec();
 
 	/**
 	 * Creates a new {@code BootJar} task.
@@ -96,14 +97,23 @@ public class BootJar extends Jar implements BootArchive {
 	@Override
 	public void copy() {
 		this.support.configureManifest(getManifest(), getMainClassName(), CLASSES_DIRECTORY, LIB_DIRECTORY,
-				CLASSPATH_INDEX, (this.layered != null) ? LAYERS_INDEX : null);
+				CLASSPATH_INDEX, (isLayeredDisabled()) ? null : LAYERS_INDEX);
 		super.copy();
+	}
+
+	private boolean isLayeredDisabled() {
+		return this.layered != null && !this.layered.isEnabled();
 	}
 
 	@Override
 	protected CopyAction createCopyAction() {
-		if (this.layered != null) {
-			LayerResolver layerResolver = new LayerResolver(getConfigurations(), this.layered, this::isLibrary);
+		if (!isLayeredDisabled()) {
+			JavaPluginConvention javaPluginConvention = getProject().getConvention()
+					.findPlugin(JavaPluginConvention.class);
+			Iterable<SourceSet> sourceSets = (javaPluginConvention != null) ? javaPluginConvention.getSourceSets()
+					: Collections.emptySet();
+			LayerResolver layerResolver = new LayerResolver(sourceSets, getConfigurations(), this.layered,
+					this::isLibrary);
 			String layerToolsLocation = this.layered.isIncludeLayerTools() ? LIB_DIRECTORY : null;
 			return this.support.createCopyAction(this, layerResolver, layerToolsLocation);
 		}
@@ -157,12 +167,11 @@ public class BootJar extends Jar implements BootArchive {
 	}
 
 	/**
-	 * Returns the spec that describes the layers in a layerd jar.
-	 * @return the spec for the layers or {@code null}.
+	 * Returns the spec that describes the layers in a layered jar.
+	 * @return the spec for the layers
 	 * @since 2.3.0
 	 */
 	@Nested
-	@Optional
 	public LayeredSpec getLayered() {
 		return this.layered;
 	}
@@ -170,19 +179,19 @@ public class BootJar extends Jar implements BootArchive {
 	/**
 	 * Configures the jar to be layered using the default layering.
 	 * @since 2.3.0
+	 * @deprecated since 2.4.0 as layering as now enabled by default.
 	 */
+	@Deprecated
 	public void layered() {
-		enableLayeringIfNecessary();
 	}
 
 	/**
-	 * Configures the jar to be layered, customizing the layers using the given
-	 * {@code action}.
+	 * Configures the jar's layering using the given {@code action}.
 	 * @param action the action to apply
 	 * @since 2.3.0
 	 */
 	public void layered(Action<LayeredSpec> action) {
-		action.execute(enableLayeringIfNecessary());
+		action.execute(this.layered);
 	}
 
 	@Override
@@ -277,13 +286,6 @@ public class BootJar extends Jar implements BootArchive {
 			this.support.setLaunchScript(launchScript);
 		}
 		return launchScript;
-	}
-
-	private LayeredSpec enableLayeringIfNecessary() {
-		if (this.layered == null) {
-			this.layered = new LayeredSpec();
-		}
-		return this.layered;
 	}
 
 	/**

@@ -127,12 +127,56 @@ class BootBuildImageIntegrationTests {
 	}
 
 	@TestTemplate
+	void buildsImageWithPullPolicy() throws IOException {
+		writeMainClass();
+		writeLongNameResource();
+		String projectName = this.gradleBuild.getProjectDir().getName();
+		ImageReference imageReference = ImageReference.of(ImageName.of(projectName));
+
+		BuildResult result = this.gradleBuild.build("bootBuildImage", "--pullPolicy=ALWAYS");
+		assertThat(result.task(":bootBuildImage").getOutcome()).isEqualTo(TaskOutcome.SUCCESS);
+		assertThat(result.getOutput()).contains("Pulled builder image").contains("Pulled run image");
+		try (GenericContainer<?> container = new GenericContainer<>(imageReference.toString())) {
+			container.waitingFor(Wait.forLogMessage("Launched\\n", 1)).start();
+		}
+
+		result = this.gradleBuild.build("bootBuildImage", "--pullPolicy=IF_NOT_PRESENT");
+		assertThat(result.task(":bootBuildImage").getOutcome()).isEqualTo(TaskOutcome.SUCCESS);
+		assertThat(result.getOutput()).doesNotContain("Pulled builder image").doesNotContain("Pulled run image");
+		try (GenericContainer<?> container = new GenericContainer<>(imageReference.toString())) {
+			container.waitingFor(Wait.forLogMessage("Launched\\n", 1)).start();
+		}
+		finally {
+			new DockerApi().image().remove(imageReference, false);
+		}
+	}
+
+	@TestTemplate
+	void failsWithLaunchScript() {
+		writeMainClass();
+		writeLongNameResource();
+		BuildResult result = this.gradleBuild.buildAndFail("bootBuildImage");
+		assertThat(result.task(":bootBuildImage").getOutcome()).isEqualTo(TaskOutcome.FAILED);
+		assertThat(result.getOutput()).contains("not compatible with buildpacks");
+	}
+
+	@TestTemplate
 	void failsWithBuilderError() {
 		writeMainClass();
 		writeLongNameResource();
 		BuildResult result = this.gradleBuild.buildAndFail("bootBuildImage");
 		assertThat(result.task(":bootBuildImage").getOutcome()).isEqualTo(TaskOutcome.FAILED);
 		assertThat(result.getOutput()).containsPattern("Builder lifecycle '.*' failed with status code");
+	}
+
+	@TestTemplate
+	void failsWithInvalidImageName() {
+		writeMainClass();
+		writeLongNameResource();
+		BuildResult result = this.gradleBuild.buildAndFail("bootBuildImage", "--imageName=example/Invalid-Image-Name");
+		assertThat(result.task(":bootBuildImage").getOutcome()).isEqualTo(TaskOutcome.FAILED);
+		assertThat(result.getOutput()).containsPattern("Unable to parse image reference")
+				.containsPattern("example/Invalid-Image-Name");
 	}
 
 	private void writeMainClass() {

@@ -25,6 +25,7 @@ import java.util.stream.Collectors;
 
 import io.lettuce.core.ClientOptions;
 import io.lettuce.core.cluster.ClusterClientOptions;
+import io.lettuce.core.cluster.ClusterTopologyRefreshOptions;
 import io.lettuce.core.cluster.ClusterTopologyRefreshOptions.RefreshTrigger;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.junit.jupiter.api.Test;
@@ -36,8 +37,10 @@ import org.springframework.boot.test.context.runner.ContextConsumer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisClusterConfiguration;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.RedisNode;
 import org.springframework.data.redis.connection.RedisSentinelConfiguration;
+import org.springframework.data.redis.connection.jedis.JedisConnectionFactory;
 import org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration.LettuceClientConfigurationBuilder;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
@@ -48,6 +51,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.util.StringUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 
 /**
  * Tests for {@link RedisAutoConfiguration}.
@@ -60,6 +64,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Mark Paluch
  * @author Stephane Nicoll
  * @author Alen Turkovic
+ * @author Scott Frederick
  */
 class RedisAutoConfigurationTests {
 
@@ -69,8 +74,10 @@ class RedisAutoConfigurationTests {
 	@Test
 	void testDefaultRedisConfiguration() {
 		this.contextRunner.run((context) -> {
-			assertThat(context.getBean("redisTemplate", RedisOperations.class)).isNotNull();
-			assertThat(context.getBean(StringRedisTemplate.class)).isNotNull();
+			assertThat(context.getBean("redisTemplate")).isInstanceOf(RedisOperations.class);
+			assertThat(context).hasSingleBean(StringRedisTemplate.class);
+			assertThat(context).hasSingleBean(RedisConnectionFactory.class);
+			assertThat(context.getBean(RedisConnectionFactory.class)).isInstanceOf(LettuceConnectionFactory.class);
 		});
 	}
 
@@ -180,6 +187,22 @@ class RedisAutoConfigurationTests {
 	}
 
 	@Test
+	void connectionFactoryWithJedisClientType() {
+		this.contextRunner.withPropertyValues("spring.redis.client-type:jedis").run((context) -> {
+			assertThat(context).hasSingleBean(RedisConnectionFactory.class);
+			assertThat(context.getBean(RedisConnectionFactory.class)).isInstanceOf(JedisConnectionFactory.class);
+		});
+	}
+
+	@Test
+	void connectionFactoryWithLettuceClientType() {
+		this.contextRunner.withPropertyValues("spring.redis.client-type:lettuce").run((context) -> {
+			assertThat(context).hasSingleBean(RedisConnectionFactory.class);
+			assertThat(context.getBean(RedisConnectionFactory.class)).isInstanceOf(LettuceConnectionFactory.class);
+		});
+	}
+
+	@Test
 	void testRedisConfigurationWithSentinel() {
 		List<String> sentinels = Arrays.asList("127.0.0.1:26379", "127.0.0.1:26380");
 		this.contextRunner
@@ -226,6 +249,17 @@ class RedisAutoConfigurationTests {
 					assertThat(sentinels.stream().map(Object::toString).collect(Collectors.toSet()))
 							.contains("127.0.0.1:26379", "127.0.0.1:26380");
 				});
+	}
+
+	@Test
+	void testRedisSentinelUrlConfiguration() {
+		this.contextRunner
+				.withPropertyValues(
+						"spring.redis.url=redis-sentinel://username:password@127.0.0.1:26379,127.0.0.1:26380/mymaster")
+				.run((context) -> assertThatIllegalStateException()
+						.isThrownBy(() -> context.getBean(LettuceConnectionFactory.class))
+						.withRootCauseInstanceOf(RedisUrlSyntaxException.class).havingRootCause().withMessageContaining(
+								"Invalid Redis URL 'redis-sentinel://username:password@127.0.0.1:26379,127.0.0.1:26380/mymaster'"));
 	}
 
 	@Test
@@ -297,6 +331,36 @@ class RedisAutoConfigurationTests {
 	void testRedisConfigurationWithClusterRefreshPeriodHasNoEffectWithNonClusteredConfiguration() {
 		this.contextRunner.withPropertyValues("spring.redis.cluster.refresh.period=30s").run(assertClientOptions(
 				ClientOptions.class, (options) -> assertThat(options.getClass()).isEqualTo(ClientOptions.class)));
+	}
+
+	@Test
+	void testRedisConfigurationWithClusterDynamicRefreshSourcesEnabled() {
+		this.contextRunner
+				.withPropertyValues("spring.redis.cluster.nodes=127.0.0.1:27379,127.0.0.1:27380",
+						"spring.redis.lettuce.cluster.refresh.dynamic-refresh-sources=true")
+				.run(assertClientOptions(ClusterClientOptions.class,
+						(options) -> assertThat(options.getTopologyRefreshOptions().useDynamicRefreshSources())
+								.isTrue()));
+	}
+
+	@Test
+	void testRedisConfigurationWithClusterDynamicRefreshSourcesDisabled() {
+		this.contextRunner
+				.withPropertyValues("spring.redis.cluster.nodes=127.0.0.1:27379,127.0.0.1:27380",
+						"spring.redis.lettuce.cluster.refresh.dynamic-refresh-sources=false")
+				.run(assertClientOptions(ClusterClientOptions.class,
+						(options) -> assertThat(options.getTopologyRefreshOptions().useDynamicRefreshSources())
+								.isFalse()));
+	}
+
+	@Test
+	void testRedisConfigurationWithClusterDynamicSourcesUnspecifiedUsesDefault() {
+		this.contextRunner
+				.withPropertyValues("spring.redis.cluster.nodes=127.0.0.1:27379,127.0.0.1:27380",
+						"spring.redis.lettuce.cluster.refresh.dynamic-sources=")
+				.run(assertClientOptions(ClusterClientOptions.class,
+						(options) -> assertThat(options.getTopologyRefreshOptions().useDynamicRefreshSources())
+								.isEqualTo(ClusterTopologyRefreshOptions.DEFAULT_DYNAMIC_REFRESH_SOURCES)));
 	}
 
 	private <T extends ClientOptions> ContextConsumer<AssertableApplicationContext> assertClientOptions(
