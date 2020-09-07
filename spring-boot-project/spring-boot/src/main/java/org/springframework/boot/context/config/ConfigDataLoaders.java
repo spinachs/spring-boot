@@ -40,25 +40,33 @@ class ConfigDataLoaders {
 
 	private final Log logger;
 
+	private final ConfigDataLocationNotFoundAction locationNotFoundAction;
+
 	private final List<ConfigDataLoader<?>> loaders;
 
 	private final List<Class<?>> locationTypes;
 
 	/**
 	 * Create a new {@link ConfigDataLoaders} instance.
+	 * @param locationNotFoundAction the action to take if a
+	 * {@link ConfigDataLocationNotFoundException} is thrown
 	 * @param logFactory the deferred log factory
 	 */
-	ConfigDataLoaders(DeferredLogFactory logFactory) {
-		this(logFactory, SpringFactoriesLoader.loadFactoryNames(ConfigDataLoader.class, null));
+	ConfigDataLoaders(DeferredLogFactory logFactory, ConfigDataLocationNotFoundAction locationNotFoundAction) {
+		this(logFactory, locationNotFoundAction, SpringFactoriesLoader.loadFactoryNames(ConfigDataLoader.class, null));
 	}
 
 	/**
 	 * Create a new {@link ConfigDataLoaders} instance.
 	 * @param logFactory the deferred log factory
+	 * @param locationNotFoundAction the action to take if a
+	 * {@link ConfigDataLocationNotFoundException} is thrown
 	 * @param names the {@link ConfigDataLoader} class names instantiate
 	 */
-	ConfigDataLoaders(DeferredLogFactory logFactory, List<String> names) {
+	ConfigDataLoaders(DeferredLogFactory logFactory, ConfigDataLocationNotFoundAction locationNotFoundAction,
+			List<String> names) {
 		this.logger = logFactory.getLog(getClass());
+		this.locationNotFoundAction = locationNotFoundAction;
 		Instantiator<ConfigDataLoader<?>> instantiator = new Instantiator<>(ConfigDataLoader.class,
 				(availableParameters) -> availableParameters.add(Log.class, logFactory::getLog));
 		this.loaders = instantiator.instantiate(names);
@@ -99,10 +107,11 @@ class ConfigDataLoaders {
 			return loader.load(context, location);
 		}
 		catch (ConfigDataLocationNotFoundException ex) {
-			if (!optional) {
-				throw ex;
+			if (optional) {
+				this.logger.trace(LogMessage.format("Skipping missing resource from optional location %s", location));
+				return null;
 			}
-			this.logger.trace(LogMessage.format("Skipping missing resource from optional location %s", location));
+			this.locationNotFoundAction.handle(this.logger, location, ex);
 			return null;
 		}
 	}
