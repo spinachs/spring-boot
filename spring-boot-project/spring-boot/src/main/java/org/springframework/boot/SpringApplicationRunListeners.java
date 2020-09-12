@@ -23,6 +23,7 @@ import java.util.function.Consumer;
 
 import org.apache.commons.logging.Log;
 
+import org.springframework.context.ApplicationListener;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.metrics.ApplicationStartup;
@@ -30,6 +31,8 @@ import org.springframework.core.metrics.StartupStep;
 import org.springframework.util.ReflectionUtils;
 
 /**
+ * 最后还是回调{@link ApplicationListener}实现。
+ *
  * A collection of {@link SpringApplicationRunListener}.
  *
  * @author Phillip Webb

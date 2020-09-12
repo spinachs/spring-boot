@@ -158,6 +158,14 @@ class BeanDefinitionLoader {
 		throw new IllegalArgumentException("Invalid source type " + source.getClass());
 	}
 
+	/**
+	 * 加载Class源码。
+	 * 1. 如果class为groovy，使用groovyReader来加载；
+	 * 2. 否则如果是component，使用Java方式加载。
+	 *
+	 * @param source
+	 * @return
+	 */
 	private void load(Class<?> source) {
 		if (isGroovyPresent() && GroovyBeanDefinitionSource.class.isAssignableFrom(source)) {
 			// Any GroovyLoaders added in beans{} DSL can contribute beans here
@@ -169,6 +177,14 @@ class BeanDefinitionLoader {
 		}
 	}
 
+	/**
+	 * 加载资源文件。
+	 * 1. 如果资源文件以groovy结尾，使用groovyReader加载。
+	 * 2. 否则以xml方式加载
+	 *
+	 * @param source
+	 * @return
+	 */
 	private void load(Resource source) {
 		if (source.getFilename().endsWith(".groovy")) {
 			if (this.groovyReader == null) {
@@ -184,6 +200,12 @@ class BeanDefinitionLoader {
 		}
 	}
 
+	/**
+	 * 加载Package类型资源
+	 *
+	 * @param source
+	 * @return
+	 */
 	private void load(Package source) {
 		this.scanner.scan(source.getName());
 	}

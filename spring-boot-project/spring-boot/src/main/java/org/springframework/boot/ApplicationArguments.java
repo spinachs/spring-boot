@@ -20,6 +20,8 @@ import java.util.List;
 import java.util.Set;
 
 /**
+ * 提供{@link SpringApplication}启动参数访问功能。
+ *
  * Provides access to the arguments that were used to run a {@link SpringApplication}.
  *
  * @author Phillip Webb
@@ -28,12 +30,16 @@ import java.util.Set;
 public interface ApplicationArguments {
 
 	/**
+	 * 返回原始参数。
+	 *
 	 * Return the raw unprocessed arguments that were passed to the application.
 	 * @return the arguments
 	 */
 	String[] getSourceArgs();
 
 	/**
+	 * 返回可选参数name。
+	 *
 	 * Return the names of all option arguments. For example, if the arguments were
 	 * "--foo=bar --debug" would return the values {@code ["foo", "debug"]}.
 	 * @return the option names or an empty set
@@ -41,6 +47,8 @@ public interface ApplicationArguments {
 	Set<String> getOptionNames();
 
 	/**
+	 * 检查参数中是否包含配置名。
+	 *
 	 * Return whether the set of option arguments parsed from the arguments contains an
 	 * option with the given name.
 	 * @param name the name to check
@@ -49,6 +57,8 @@ public interface ApplicationArguments {
 	boolean containsOption(String name);
 
 	/**
+	 * 返回给定配置名的值列表。
+	 *
 	 * Return the collection of values associated with the arguments option having the
 	 * given name.
 	 * <ul>
@@ -66,6 +76,8 @@ public interface ApplicationArguments {
 	List<String> getOptionValues(String name);
 
 	/**
+	 * 返回必填参数集合。
+	 *
 	 * Return the collection of non-option arguments parsed.
 	 * @return the non-option arguments or an empty list
 	 */

@@ -19,6 +19,8 @@ package org.springframework.boot;
 import org.springframework.util.ClassUtils;
 
 /**
+ * web应用类型枚举类。
+ *
  * An enumeration of possible types of web application.
  *
  * @author Andy Wilkinson
@@ -28,18 +30,27 @@ import org.springframework.util.ClassUtils;
 public enum WebApplicationType {
 
 	/**
+	 * 不应以web应用方式启动
+	 * 不应启动内嵌web服务器
+	 *
 	 * The application should not run as a web application and should not start an
 	 * embedded web server.
 	 */
 	NONE,
 
 	/**
+	 * 以基于servlet web应用方式启动
+	 * 启动内嵌servlet web服务器
+	 *
 	 * The application should run as a servlet-based web application and should start an
 	 * embedded servlet web server.
 	 */
 	SERVLET,
 
 	/**
+	 * 以reactive web应用方式启动
+	 * 启动内嵌reactive web server
+	 *
 	 * The application should run as a reactive web application and should start an
 	 * embedded reactive web server.
 	 */
@@ -59,7 +70,8 @@ public enum WebApplicationType {
 	private static final String REACTIVE_APPLICATION_CONTEXT_CLASS = "org.springframework.boot.web.reactive.context.ReactiveWebApplicationContext";
 
 	static WebApplicationType deduceFromClasspath() {
-		if (ClassUtils.isPresent(WEBFLUX_INDICATOR_CLASS, null) && !ClassUtils.isPresent(WEBMVC_INDICATOR_CLASS, null)
+		if (ClassUtils.isPresent(WEBFLUX_INDICATOR_CLASS, null)
+				&& !ClassUtils.isPresent(WEBMVC_INDICATOR_CLASS, null)
 				&& !ClassUtils.isPresent(JERSEY_INDICATOR_CLASS, null)) {
 			return WebApplicationType.REACTIVE;
 		}

@@ -207,10 +207,17 @@ public class SpringApplication {
 
 	private Set<String> sources = new LinkedHashSet<>();
 
+	/**
+	 * 启动类。
+	 */
 	private Class<?> mainApplicationClass;
-
+	/**
+	 * banner打印模式。
+	 */
 	private Banner.Mode bannerMode = Banner.Mode.CONSOLE;
-
+	/**
+	 * 输入启动日志开关。
+	 */
 	private boolean logStartupInfo = true;
 
 	private boolean addCommandLineProperties = true;
@@ -224,9 +231,13 @@ public class SpringApplication {
 	private BeanNameGenerator beanNameGenerator;
 
 	private ConfigurableEnvironment environment;
-
+	/**
+	 * web应用类型。
+	 */
 	private WebApplicationType webApplicationType;
-
+	/**
+	 * java.awt.headless默认值。
+	 */
 	private boolean headless = true;
 
 	private boolean registerShutdownHook = true;
@@ -241,6 +252,9 @@ public class SpringApplication {
 
 	private boolean allowBeanDefinitionOverriding;
 
+	/**
+	 * 标记是否通过接口方式自行设置environment。
+	 */
 	private boolean isCustomEnvironment = false;
 
 	private boolean lazyInitialization = false;
@@ -264,12 +278,17 @@ public class SpringApplication {
 	}
 
 	/**
+	 * 执行一些初始化操作：
+	 * 1. 获取web类型，枚举为{@link WebApplicationType};
+	 * 2. 获取{@link ApplicationContextInitializer}和{@link SpringApplication}接口实现类对象;
+	 * 3. 获取程序入口函数类。
+	 *
 	 * Create a new {@link SpringApplication} instance. The application context will load
 	 * beans from the specified primary sources (see {@link SpringApplication class-level}
 	 * documentation for details. The instance can be customized before calling
 	 * {@link #run(String...)}.
 	 * @param resourceLoader the resource loader to use
-	 * @param primarySources the primary bean sources
+	 * @param primarySources the primary bean sources 主bean class对象
 	 * @see #run(Class, String[])
 	 * @see #setSources(Set)
 	 */
@@ -284,6 +303,11 @@ public class SpringApplication {
 		this.mainApplicationClass = deduceMainApplicationClass();
 	}
 
+	/**
+	 * 获取应用启动类。
+	 *
+	 * @return
+	 */
 	private Class<?> deduceMainApplicationClass() {
 		try {
 			StackTraceElement[] stackTrace = new RuntimeException().getStackTrace();
@@ -300,6 +324,25 @@ public class SpringApplication {
 	}
 
 	/**
+	 * 启动Spring应用，创建并刷新ApplicationContext。
+	 * 1. 系统设置为Headless模式{@link #configureHeadlessProperty()}
+	 * 2. 获取Spring启动状态回调对象{@link #getRunListeners(String[])}
+	 * 3. 回调starting
+	 * 4. 创建命令行参数对象
+	 * 5. 准备运行环境信息{@link #prepareEnvironment(SpringApplicationRunListeners, ApplicationArguments)}
+	 * 6. 打印banner
+	 * 7. 创建ApplicationContext对象{@link #createApplicationContext()}
+	 * 8. 准备Context{@link #prepareContext(ConfigurableApplicationContext, ConfigurableEnvironment,
+	 * SpringApplicationRunListeners, ApplicationArguments, Banner)}
+	 * 9. 刷新Context{@link #refreshContext(ConfigurableApplicationContext)}
+	 * 10. Context刷新后操作，目前方法实现为空
+	 * 11. 打印应用启动成功日志，包含启动耗时等信息
+	 * 12. 回到started
+	 * 13. 回调runner方法{@link #callRunners(ApplicationContext, ApplicationArguments)}
+	 *
+	 *
+	 * SpringBoot应用启动时间从{@link #run(String...)}算起，到started回调执行之前，使用{@link StopWatch}统计时间。
+	 *
 	 * Run the Spring application, creating and refreshing a new
 	 * {@link ApplicationContext}.
 	 * @param args the application arguments (usually passed from a Java main method)
@@ -347,6 +390,18 @@ public class SpringApplication {
 		return context;
 	}
 
+	/**
+	 * 准备环境变量信息。
+	 * 5.1 根据应用类型新建环境变量对象{@link #getOrCreateEnvironment()}
+	 * 5.2 根据命令行参数配置环境信息{@link #configureEnvironment(ConfigurableEnvironment, String[])}
+	 * 5.3 回调environmentPrepared
+	 * 5.4 将环境变量与该对象绑定{@link #bindToSpringApplication(ConfigurableEnvironment)}
+	 * 5.5 将environment设置到{@link ConfigurationPropertySources}
+	 *
+	 * @param listeners
+	 * @param applicationArguments
+	 * @return
+	 */
 	private ConfigurableEnvironment prepareEnvironment(SpringApplicationRunListeners listeners,
 			ApplicationArguments applicationArguments) {
 		// Create and configure the environment
@@ -365,6 +420,11 @@ public class SpringApplication {
 		return environment;
 	}
 
+	/**
+	 * 根据web类型获取Environment类型。
+	 *
+	 * @return
+	 */
 	private Class<? extends StandardEnvironment> deduceEnvironmentClass() {
 		switch (this.webApplicationType) {
 		case SERVLET:
@@ -376,6 +436,25 @@ public class SpringApplication {
 		}
 	}
 
+	/**
+	 * 准备Context。
+	 * 8.1 设置environment
+	 * 8.2 ApplicationContext后处理{@link #postProcessApplicationContext(ConfigurableApplicationContext)}
+	 * 8.3 回调{@link ApplicationContextInitializer}接口{@link #applyInitializers(ConfigurableApplicationContext)}
+	 * 8.4 回调contextPrepared
+	 * 8.5 打印启动信息和启动profiles信息
+	 * 8.6 BeanFactory中注册单例springApplicationArguments、springBootBanner对象
+	 * 8.7 设置懒加载
+	 * 8.8 获取所有资源，一般就SpringApplication.run方法中传递进来的Class对象
+	 * 8.9 将资源加载到ApplicationContext中{@link #load(ApplicationContext, Object[])}
+	 * 8.10. 回调contextLoad
+	 *
+	 * @param context
+	 * @param environment
+	 * @param listeners
+	 * @param applicationArguments
+	 * @param printedBanner
+	 */
 	private void prepareContext(ConfigurableApplicationContext context, ConfigurableEnvironment environment,
 			SpringApplicationRunListeners listeners, ApplicationArguments applicationArguments, Banner printedBanner) {
 		context.setEnvironment(environment);
@@ -406,6 +485,13 @@ public class SpringApplication {
 		listeners.contextLoaded(context);
 	}
 
+	/**
+	 * 刷新ApplicationContext。
+	 * 9.1 执行刷新{@link #refresh(ApplicationContext)}
+	 * 9.2 注册JVM停止钩子
+	 *
+	 * @param context
+	 */
 	private void refreshContext(ConfigurableApplicationContext context) {
 		refresh((ApplicationContext) context);
 		if (this.registerShutdownHook) {
@@ -418,11 +504,23 @@ public class SpringApplication {
 		}
 	}
 
+	/**
+	 * 没设置java.awt.headless情况下，默认设置为true。
+	 * Headless模式是系统的一种配置模式，表示系统缺少显示设备、键盘和鼠标，可用于提供web服务场景。
+	 *
+	 */
 	private void configureHeadlessProperty() {
 		System.setProperty(SYSTEM_PROPERTY_JAVA_AWT_HEADLESS,
 				System.getProperty(SYSTEM_PROPERTY_JAVA_AWT_HEADLESS, Boolean.toString(this.headless)));
 	}
 
+	/**
+	 * {@link SpringApplicationRunListeners}中保存了{@link SpringApplicationRunListener}实现类对象列表，SpringBoot启动
+	 * 各个阶段回调时，遍历列表进行回调.
+	 *
+	 * @param args
+	 * @return
+	 */
 	private SpringApplicationRunListeners getRunListeners(String[] args) {
 		Class<?>[] types = new Class<?>[] { SpringApplication.class, String[].class };
 		return new SpringApplicationRunListeners(logger,
@@ -434,6 +532,15 @@ public class SpringApplication {
 		return getSpringFactoriesInstances(type, new Class<?>[] {});
 	}
 
+	/**
+	 * 根据type加载META-INF/spring.factories文件中配置的对象列表。
+	 *
+	 * @param type
+	 * @param parameterTypes
+	 * @param args
+	 * @param <T>
+	 * @return
+	 */
 	private <T> Collection<T> getSpringFactoriesInstances(Class<T> type, Class<?>[] parameterTypes, Object... args) {
 		ClassLoader classLoader = getClassLoader();
 		// Use names and ensure unique to protect against duplicates
@@ -443,6 +550,17 @@ public class SpringApplication {
 		return instances;
 	}
 
+	/**
+	 * 创建对象实例。
+	 *
+	 * @param type
+	 * @param parameterTypes
+	 * @param classLoader
+	 * @param args
+	 * @param names
+	 * @param <T>
+	 * @return
+	 */
 	@SuppressWarnings("unchecked")
 	private <T> List<T> createSpringFactoriesInstances(Class<T> type, Class<?>[] parameterTypes,
 			ClassLoader classLoader, Object[] args, Set<String> names) {
@@ -462,6 +580,11 @@ public class SpringApplication {
 		return instances;
 	}
 
+	/**
+	 * 获取或者新建环境变量对象，包含active和default配置。
+	 *
+	 * @return
+	 */
 	private ConfigurableEnvironment getOrCreateEnvironment() {
 		if (this.environment != null) {
 			return this.environment;
@@ -477,6 +600,10 @@ public class SpringApplication {
 	}
 
 	/**
+	 * 配置环境变量。
+	 * 5.2.1 将命令行参数添加到配置信息中{@link #configurePropertySources(ConfigurableEnvironment, String[])}
+	 * 5.2.2 配置profile文件{@link #configureProfiles(ConfigurableEnvironment, String[])}
+	 *
 	 * Template method delegating to
 	 * {@link #configurePropertySources(ConfigurableEnvironment, String[])} and
 	 * {@link #configureProfiles(ConfigurableEnvironment, String[])} in that order.
@@ -508,6 +635,7 @@ public class SpringApplication {
 		DefaultPropertiesPropertySource.ifNotEmpty(this.defaultProperties, sources::addLast);
 		if (this.addCommandLineProperties && args.length > 0) {
 			String name = CommandLinePropertySource.COMMAND_LINE_PROPERTY_SOURCE_NAME;
+			//name存在则替换，否则添加到第一个。
 			if (sources.contains(name)) {
 				PropertySource<?> source = sources.get(name);
 				CompositePropertySource composite = new CompositePropertySource(name);
@@ -523,6 +651,8 @@ public class SpringApplication {
 	}
 
 	/**
+	 * 根据接口设置profiles和配置文件中{@code spring.profiles.active}值设置环境变量中activeProfile。
+	 *
 	 * Configure which profiles are active (or active by default) for this application
 	 * environment. Additional profiles may be activated during configuration file
 	 * processing via the {@code spring.profiles.active} property.
@@ -544,6 +674,12 @@ public class SpringApplication {
 		}
 	}
 
+	/**
+	 * spring.beaninfo.ignore配置不存在的情况下，默认设置为true。
+	 * 设置为true，表示跳过扫描BeanInfo类，防止重复加载bean。
+	 *
+	 * @param environment
+	 */
 	private void configureIgnoreBeanInfo(ConfigurableEnvironment environment) {
 		if (System.getProperty(CachedIntrospectionResults.IGNORE_BEANINFO_PROPERTY_NAME) == null) {
 			Boolean ignore = environment.getProperty("spring.beaninfo.ignore", Boolean.class, Boolean.TRUE);
@@ -552,6 +688,8 @@ public class SpringApplication {
 	}
 
 	/**
+	 * 将环境变量绑定到{@link SpringApplication}对象上。
+	 *
 	 * Bind the environment to the {@link SpringApplication}.
 	 * @param environment the environment to bind
 	 */
@@ -564,6 +702,12 @@ public class SpringApplication {
 		}
 	}
 
+	/**
+	 * 根据bannerMode类型输出banner信息。
+	 *
+	 * @param environment
+	 * @return
+	 */
 	private Banner printBanner(ConfigurableEnvironment environment) {
 		if (this.bannerMode == Banner.Mode.OFF) {
 			return null;
@@ -578,6 +722,8 @@ public class SpringApplication {
 	}
 
 	/**
+	 * 根据web类型创建ApplicationContext对象。
+	 *
 	 * Strategy method used to create the {@link ApplicationContext}. By default this
 	 * method will respect any explicitly set application context class or factory before
 	 * falling back to a suitable default.
@@ -590,6 +736,8 @@ public class SpringApplication {
 	}
 
 	/**
+	 * 为定制所用，设置beanNameGenerator、resourceLoader和conversionService，一般情况下这几个值为null，就相当于什么也没做。
+	 *
 	 * Apply any relevant post processing the {@link ApplicationContext}. Subclasses can
 	 * apply additional processing as required.
 	 * @param context the application context
@@ -613,6 +761,8 @@ public class SpringApplication {
 	}
 
 	/**
+	 * 回调ApplicationContextInitializer的initialize方法。
+	 *
 	 * Apply any {@link ApplicationContextInitializer}s to the context before it is
 	 * refreshed.
 	 * @param context the configured ApplicationContext (not refreshed yet)
@@ -629,6 +779,8 @@ public class SpringApplication {
 	}
 
 	/**
+	 * 打印启动信息。
+	 *
 	 * Called to log startup information, subclasses may override to add additional
 	 * logging.
 	 * @param isRoot true if this application is the root of a context hierarchy
@@ -640,6 +792,8 @@ public class SpringApplication {
 	}
 
 	/**
+	 * 打印active profiles信息。
+	 *
 	 * Called to log active profile information.
 	 * @param context the application context
 	 */
@@ -671,6 +825,11 @@ public class SpringApplication {
 	}
 
 	/**
+	 * 将beans加载到ApplicationContext中。
+	 * 8.9.1 创建BeanDefinitionLoader对象{@link #createBeanDefinitionLoader(BeanDefinitionRegistry, Object[])}
+	 * 8.9.2 loader设置beanNameGenerator、resourceLoader和environment
+	 * 8.9.3 调用load加载
+	 *
 	 * Load beans into the application context.
 	 * @param context the context to load beans into
 	 * @param sources the sources to load
@@ -730,6 +889,11 @@ public class SpringApplication {
 	}
 
 	/**
+	 * 创建{@link BeanDefinitionLoader}对象。
+	 * {@link BeanDefinitionLoader}中包含{@link AnnotatedBeanDefinitionReader}、{@link XmlBeanDefinitionReader}、
+	 * {@link GroovyBeanDefinitionReader}和{@link ClassPathBeanDefinitionScanner}，分别用来加载Class、Resource、
+	 * 以groovy结尾的资源文件和Package。
+	 *
 	 * Factory method used to create the {@link BeanDefinitionLoader}.
 	 * @param registry the bean definition registry
 	 * @param sources the sources to load
@@ -740,6 +904,9 @@ public class SpringApplication {
 	}
 
 	/**
+	 * 执行ApplicationContext类refresh方法。
+	 * todo 要去看看这个刷新具体做了什么
+	 *
 	 * Refresh the underlying {@link ApplicationContext}.
 	 * @param applicationContext the application context to refresh
 	 * @deprecated since 2.3.0 in favor of
@@ -760,6 +927,7 @@ public class SpringApplication {
 	}
 
 	/**
+	 *
 	 * Called after the context has been refreshed.
 	 * @param context the application context
 	 * @param args the application arguments
@@ -767,6 +935,11 @@ public class SpringApplication {
 	protected void afterRefresh(ConfigurableApplicationContext context, ApplicationArguments args) {
 	}
 
+	/**
+	 * context刷新结束之后调用{@link ApplicationRunner}和{@link CommandLineRunner}实现类方法.
+	 * @param context
+	 * @param args
+	 */
 	private void callRunners(ApplicationContext context, ApplicationArguments args) {
 		List<Object> runners = new ArrayList<>();
 		runners.addAll(context.getBeansOfType(ApplicationRunner.class).values());
@@ -1050,6 +1223,8 @@ public class SpringApplication {
 	}
 
 	/**
+	 * 接口方式配置profiles。
+	 *
 	 * Set additional profile values to use (on top of those set in system or command line
 	 * properties).
 	 * @param profiles the additional profiles to set
@@ -1075,6 +1250,8 @@ public class SpringApplication {
 	}
 
 	/**
+	 * 接口方式设置environment。
+	 *
 	 * Sets the underlying environment that should be used with the created application
 	 * context.
 	 * @param environment the environment
