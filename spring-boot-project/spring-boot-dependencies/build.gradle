@@ -60,14 +60,14 @@ bom {
 			]
 		}
 	}
-	library("AppEngine SDK", "1.9.81") {
+	library("AppEngine SDK", "1.9.82") {
 		group("com.google.appengine") {
 			modules = [
 				"appengine-api-1.0-sdk"
 			]
 		}
 	}
-	library("Artemis", "2.14.0") {
+	library("Artemis", "2.15.0") {
 		group("org.apache.activemq") {
 			modules = [
 				"artemis-amqp-protocol",
@@ -160,7 +160,7 @@ bom {
 			]
 		}
 	}
-	library("Cassandra Driver", "4.8.0") {
+	library("Cassandra Driver", "4.9.0") {
 		group("com.datastax.oss") {
 			imports = [
 				"java-driver-bom"
@@ -179,7 +179,7 @@ bom {
 			]
 		}
 	}
-	library("Commons Codec", "1.14") {
+	library("Commons Codec", "1.15") {
 		group("commons-codec") {
 			modules = [
 				"commons-codec"
@@ -216,7 +216,7 @@ bom {
 			]
 		}
 	}
-	library("Couchbase Client", "3.0.7") {
+	library("Couchbase Client", "3.0.8") {
 		group("com.couchbase.client") {
 			modules = [
 				"java-client"
@@ -262,7 +262,7 @@ bom {
 			]
 		}
 	}
-	library("Ehcache3", "3.8.1") {
+	library("Ehcache3", "3.9.0") {
 		group("org.ehcache") {
 			modules = [
 				"ehcache",
@@ -271,7 +271,7 @@ bom {
 			]
 		}
 	}
-	library("Elasticsearch", "7.8.1") {
+	library("Elasticsearch", "7.9.1") {
 		group("org.elasticsearch") {
 			modules = [
 				"elasticsearch"
@@ -304,7 +304,7 @@ bom {
 			]
 		}
 	}
-	library("Flyway", "6.5.4") {
+	library("Flyway", "6.5.6") {
 		group("org.flywaydb") {
 			modules = [
 				"flyway-core"
@@ -379,16 +379,15 @@ bom {
 			]
 		}
 	}
-	library("Hazelcast", "3.12.8") {
+	library("Hazelcast", "4.0.3") {
 		group("com.hazelcast") {
 			modules = [
 				"hazelcast",
-				"hazelcast-client",
 				"hazelcast-spring"
 			]
 		}
 	}
-	library("Hazelcast Hibernate5", "1.3.2") {
+	library("Hazelcast Hibernate5", "2.1.1") {
 		group("com.hazelcast") {
 			modules = [
 				"hazelcast-hibernate52",
@@ -396,7 +395,7 @@ bom {
 			]
 		}
 	}
-	library("Hibernate", "5.4.20.Final") {
+	library("Hibernate", "5.4.21.Final") {
 		group("org.hibernate") {
 			modules = [
 				"hibernate-c3p0",
@@ -484,7 +483,7 @@ bom {
 			]
 		}
 	}
-	library("InfluxDB Java", "2.19") {
+	library("InfluxDB Java", "2.20") {
 		group("org.influxdb") {
 			modules = [
 				"influxdb-java"
@@ -885,7 +884,7 @@ bom {
 			]
 		}
 	}
-	library("JUnit Jupiter", "5.6.2") {
+	library("JUnit Jupiter", "5.7.0") {
 		group("org.junit") {
 			imports = [
 				"junit-bom"
@@ -930,7 +929,7 @@ bom {
 			]
 		}
 	}
-	library("Lettuce", "5.3.3.RELEASE") {
+	library("Lettuce", "6.0.0.RC2") {
 		group("io.lettuce") {
 			modules = [
 				"lettuce-core"
@@ -1108,7 +1107,7 @@ bom {
 			]
 		}
 	}
-	library("Micrometer", "1.5.4") {
+	library("Micrometer", "1.5.5") {
 		group("io.micrometer") {
 			modules = [
 				"micrometer-registry-stackdriver" {
@@ -1127,7 +1126,7 @@ bom {
 			]
 		}
 	}
-	library("Mockito", "3.4.6") {
+	library("Mockito", "3.5.10") {
 		group("org.mockito") {
 			modules = [
 				"mockito-core",
@@ -1177,14 +1176,14 @@ bom {
 			]
 		}
 	}
-	library("Netty", "4.1.51.Final") {
+	library("Netty", "4.1.52.Final") {
 		group("io.netty") {
 			imports = [
 				"netty-bom"
 			]
 		}
 	}
-	library("Netty tcNative", "2.0.31.Final") {
+	library("Netty tcNative", "2.0.34.Final") {
 		group("io.netty") {
 			modules = [
 				"netty-tcnative-boringssl-static"
@@ -1198,14 +1197,14 @@ bom {
 			]
 		}
 	}
-	library("OAuth2 OIDC SDK", "8.19.1") {
+	library("OAuth2 OIDC SDK", "8.19.2") {
 		group("com.nimbusds") {
 			modules = [
 				"oauth2-oidc-sdk"
 			]
 		}
 	}
-	library("Nimbus JOSE JWT", "9.0") {
+	library("Nimbus JOSE JWT", "9.0.1") {
 		group("com.nimbusds") {
 			modules = [
 				"nimbus-jose-jwt"
@@ -1258,14 +1257,14 @@ bom {
 			]
 		}
 	}
-	library("Pooled JMS", "1.1.2") {
+	library("Pooled JMS", "1.2.0") {
 		group("org.messaginghub") {
 			modules = [
 				"pooled-jms"
 			]
 		}
 	}
-	library("Postgresql", "42.2.14") {
+	library("Postgresql", "42.2.16") {
 		group("org.postgresql") {
 			modules = [
 				"postgresql"
@@ -1303,7 +1302,7 @@ bom {
 			]
 		}
 	}
-	library("R2DBC Bom", "Arabba-SR6") {
+	library("R2DBC Bom", "Arabba-SR7") {
 		group("io.r2dbc") {
 			imports = [
 					"r2dbc-bom"
@@ -1324,7 +1323,7 @@ bom {
 			]
 		}
 	}
-	library("Reactor Bom", "2020.0.0-SNAPSHOT") {
+	library("Reactor Bom", "2020.0.0-RC1") {
 		group("io.projectreactor") {
 			imports = [
 				"reactor-bom"
@@ -1344,7 +1343,7 @@ bom {
 			]
 		}
 	}
-	library("RSocket", "1.1.0-SNAPSHOT") {
+	library("RSocket", "1.1.0-M2") {
 		group("io.rsocket") {
 			imports = [
 				"rsocket-bom"
@@ -1480,7 +1479,7 @@ bom {
 			]
 		}
 	}
-	library("SendGrid", "4.6.3") {
+	library("SendGrid", "4.6.5") {
 		group("com.sendgrid") {
 			modules = [
 				"sendgrid-java"
@@ -1510,7 +1509,7 @@ bom {
 			]
 		}
 	}
-	library("SnakeYAML", "1.26") {
+	library("SnakeYAML", "1.27") {
 		group("org.yaml") {
 			modules = [
 				"snakeyaml"
@@ -1518,6 +1517,9 @@ bom {
 		}
 	}
 	library("Solr", "8.5.2") {
+		prohibit("[8.6.0,8.7.0)") {
+			because "it uses a library that is not available on Maven Central"
+		}
 		group("org.apache.solr") {
 			modules = [
 				"solr-analysis-extras",
@@ -1537,7 +1539,7 @@ bom {
 			]
 		}
 	}
-	library("Spring AMQP", "2.3.0-SNAPSHOT") {
+	library("Spring AMQP", "2.3.0-M3") {
 		group("org.springframework.amqp") {
 			modules = [
 				"spring-amqp",
@@ -1547,7 +1549,7 @@ bom {
 			]
 		}
 	}
-	library("Spring Batch", "4.3.0-SNAPSHOT") {
+	library("Spring Batch", "4.3.0-RC1") {
 		group("org.springframework.batch") {
 			modules = [
 				"spring-batch-core",
@@ -1557,14 +1559,14 @@ bom {
 			]
 		}
 	}
-	library("Spring Data Bom", "2020.0.0-SNAPSHOT") {
+	library("Spring Data Bom", "2020.0.0-RC1") {
 		group("org.springframework.data") {
 			imports = [
 				"spring-data-bom"
 			]
 		}
 	}
-	library("Spring Framework", "5.3.0-SNAPSHOT") {
+	library("Spring Framework", "5.3.0-RC1") {
 		group("org.springframework") {
 			imports = [
 				"spring-framework-bom"
@@ -1578,14 +1580,14 @@ bom {
 			]
 		}
 	}
-	library("Spring Integration", "5.4.0-SNAPSHOT") {
+	library("Spring Integration", "5.4.0-M3") {
 		group("org.springframework.integration") {
 			imports = [
 				"spring-integration-bom"
 			]
 		}
 	}
-	library("Spring Kafka", "2.6.0") {
+	library("Spring Kafka", "2.6.1") {
 		group("org.springframework.kafka") {
 			modules = [
 				"spring-kafka",
@@ -1605,7 +1607,7 @@ bom {
 			]
 		}
 	}
-	library("Spring RESTDocs", "2.0.4.RELEASE") {
+	library("Spring RESTDocs", "2.0.5.RELEASE") {
 		group("org.springframework.restdocs") {
 			modules = [
 				"spring-restdocs-asciidoctor",
@@ -1630,14 +1632,14 @@ bom {
 			]
 		}
 	}
-	library("Spring Session Bom", "2020.0.0-SNAPSHOT") {
+	library("Spring Session Bom", "2020.0.0-RC1") {
 		group("org.springframework.session") {
 			imports = [
 				"spring-session-bom"
 			]
 		}
 	}
-	library("Spring WS", "3.0.9.RELEASE") {
+	library("Spring WS", "3.0.10.RELEASE") {
 		group("org.springframework.ws") {
 			modules = [
 				"spring-ws-core",
@@ -1691,14 +1693,14 @@ bom {
 			]
 		}
 	}
-	library("Thymeleaf Layout Dialect", "2.4.1") {
+	library("Thymeleaf Layout Dialect", "2.5.1") {
 		group("nz.net.ultraq.thymeleaf") {
 			modules = [
 				"thymeleaf-layout-dialect"
 			]
 		}
 	}
-	library("Tomcat", "9.0.37") {
+	library("Tomcat", "9.0.38") {
 		group("org.apache.tomcat") {
 			modules = [
 				"tomcat-annotations-api",
@@ -1722,7 +1724,7 @@ bom {
 			]
 		}
 	}
-	library("Undertow", "2.1.3.Final") {
+	library("Undertow", "2.2.0.Final") {
 		group("io.undertow") {
 			modules = [
 				"undertow-core",

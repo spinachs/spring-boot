@@ -669,7 +669,7 @@ Set the value to `ignore` using `SpringApplication.setDefaultProperties(...)` or
 [[boot-features-external-config-files-wildcards]]
 ==== Wildcard Locations
 If a config file location includes the `{asterisk}` character for the last path segment, it is considered a wildcard location.
-Wildcards are expanded when the config is loaded so that immediate subdirectories are are also checked.
+Wildcards are expanded when the config is loaded so that immediate subdirectories are also checked.
 Wildcard locations are particularly useful in an environment such as Kubernetes when there are multiple sources of config properties.
 
 For example, if you have some Redis configuration and some MySQL configuration, you might want to keep those two pieces of configuration separate, while requiring that both those are present in an `application.properties` file.
@@ -855,7 +855,7 @@ See the <<boot-features-external-config-file-activation-properties, next section
 It's sometimes useful to only activate a given get of properties when certain conditions are met.
 For example, you might have properties that are only relevant when a specific profile is active.
 
-You can conditionally active a properties document using `spring.config.activate.*`.
+You can conditionally activate a properties document using `spring.config.activate.*`.
 
 The following activation properties are available:
 
@@ -1227,7 +1227,7 @@ Spring Boot provides infrastructure to bind `@ConfigurationProperties` types and
 You can either enable configuration properties on a class-by-class basis or enable configuration property scanning that works in a similar manner to component scanning.
 
 Sometimes, classes annotated with `@ConfigurationProperties` might not be suitable for scanning, for example, if you're developing your own auto-configuration or you want to enable them conditionally.
-In these cases, specify the list of types to process using the `@EnableConfigurationProperties` or `@ImportConfigurationPropertiesBean` annotations.
+In these cases, specify the list of types to process using the `@EnableConfigurationProperties` or `@ImportAsConfigurationPropertiesBean` annotations.
 This can be done on any `@Configuration` class, as shown in the following example:
 
 [source,java,indent=0]
@@ -1253,7 +1253,7 @@ If you want to define specific packages to scan, you can do so as shown in the f
 
 [NOTE]
 ====
-When the `@ConfigurationProperties` bean is registered using configuration property scanning or via `@EnableConfigurationProperties` or `@ImportConfigurationPropertiesBean`, the bean has a conventional name: `<prefix>-<fqn>`, where `<prefix>` is the environment key prefix specified in the `@ConfigurationProperties` annotation and `<fqn>` is the fully qualified name of the bean.
+When the `@ConfigurationProperties` bean is registered using configuration property scanning or via `@EnableConfigurationProperties` or `@ImportAsConfigurationPropertiesBean`, the bean has a conventional name: `<prefix>-<fqn>`, where `<prefix>` is the environment key prefix specified in the `@ConfigurationProperties` annotation and `<fqn>` is the fully qualified name of the bean.
 If the annotation does not provide any prefix, only the fully qualified name of the bean is used.
 
 The bean name in the example above is `acme-com.example.AcmeProperties`.
@@ -1333,18 +1333,18 @@ To configure a bean from the `Environment` properties, add `@ConfigurationProper
 Any JavaBean property defined with the `another` prefix is mapped onto that `ExampleItem` bean in manner similar to the preceding `AcmeProperties` example.
 
 If you want to use constructor binding with a third-party class, you can't use a `@Bean` method since Spring will need to create the object instance.
-For those situations, you can use an `@ImportConfigurationPropertiesBean` annotation on your `@Configuration` or `@SpringBootApplication` class.
+For those situations, you can use an `@ImportAsConfigurationPropertiesBean` annotation on your `@Configuration` or `@SpringBootApplication` class.
 
 [source,java,indent=0]
 ----
 	@SpringBootApplication
-	@ImportConfigurationPropertiesBean(type = ExampleItem.class, prefix = "another")
+	@ImportAsConfigurationPropertiesBean(type = ExampleItem.class, prefix = "another")
 	public class MyApp {
 		...
 	}
 ----
 
-TIP: `@ImportConfigurationPropertiesBean` also works for JavaBean bindings as long as the type has a single no-arg constructor
+TIP: `@ImportAsConfigurationPropertiesBean` also works for JavaBean bindings as long as the type has a single no-arg constructor
 
 
 
@@ -2665,11 +2665,10 @@ There are several <<boot-features-jsp-limitations, known limitations>> when usin
 
 When you use one of these templating engines with the default configuration, your templates are picked up automatically from `src/main/resources/templates`.
 
-TIP: Depending on how you run your application, IntelliJ IDEA orders the classpath differently.
+TIP: Depending on how you run your application, your IDE may order the classpath differently.
 Running your application in the IDE from its main method results in a different ordering than when you run your application by using Maven or Gradle or from its packaged jar.
-This can cause Spring Boot to fail to find the templates on the classpath.
+This can cause Spring Boot to fail to find the expected template.
 If you have this problem, you can reorder the classpath in the IDE to place the module's classes and resources first.
-Alternatively, you can configure the template prefix to search every `templates` directory on the classpath, as follows: `classpath*:/templates/`.
 
 
 
@@ -4249,7 +4248,7 @@ The following example shows how to manually override the database port while the
 	}
 ----
 
-The following examples shows how to set some PostgreSQL connection options:
+The following examples show how to set some PostgreSQL connection options:
 
 [source,java,indent=0]
 ----
@@ -4378,7 +4377,7 @@ There is a `spring-boot-starter-data-redis` "`Starter`" for collecting the depen
 By default, it uses https://github.com/lettuce-io/lettuce-core/[Lettuce].
 That starter handles both traditional and reactive applications.
 
-TIP: we also provide a `spring-boot-starter-data-redis-reactive` "`Starter`" for consistency with the other stores with reactive support.
+TIP: We also provide a `spring-boot-starter-data-redis-reactive` "`Starter`" for consistency with the other stores with reactive support.
 
 
 
@@ -5975,7 +5974,16 @@ The following example shows a customizer that configures the use of a proxy for 
 include::{code-examples}/web/client/RestTemplateProxyCustomizationExample.java[tag=customizer]
 ----
 
-Finally, the most extreme (and rarely used) option is to create your own `RestTemplateBuilder` bean.
+Finally, you can also create your own `RestTemplateBuilder` bean.
+To prevent switching off the auto-configuration of a `RestTemplateBuilder` and prevent any `RestTemplateCustomizer` beans from being used, make sure to configure your custom instance with a `RestTemplateBuilderConfigurer`.
+The following example exposes a `RestTemplateBuilder` with what Spring Boot would auto-configure, except that custom connect and read timeouts are also specified:
+
+[source,java,indent=0]
+----
+include::{code-examples}/web/client/RestTemplateBuilderCustomizationExample.java[tag=customizer]
+----
+
+The most extreme (and rarely used) option is to create your own `RestTemplateBuilder` bean without using a configurer.
 Doing so switches off the auto-configuration of a `RestTemplateBuilder` and prevents any `RestTemplateCustomizer` beans from being used.
 
 
@@ -6199,6 +6207,18 @@ The {spring-boot-module-code}/jta/atomikos/AtomikosXAConnectionFactoryWrapper.ja
 == Hazelcast
 If https://hazelcast.com/[Hazelcast] is on the classpath and a suitable configuration is found, Spring Boot auto-configures a `HazelcastInstance` that you can inject in your application.
 
+Spring Boot first attempts to create a client by checking the following configuration options:
+
+* The presence of a `com.hazelcast.client.config.ClientConfig` bean.
+* A configuration file defined by the configprop:spring.hazelcast.config[] property.
+* The presence of the `hazelcast.client.config` system property.
+* A `hazelcast-client.xml` in the working directory or at the root of the classpath.
+* A `hazelcast-client.yaml` in the working directory or at the root of the classpath.
+
+NOTE: Spring Boot supports both Hazelcast 4 and Hazelcast 3.
+If you downgrade to Hazelcast 3, `hazelcast-client` should be added to the classpath to configure a client.
+
+If a client can't be created, Spring Boot attempts to configure an embedded server.
 If you define a `com.hazelcast.config.Config` bean, Spring Boot uses that.
 If your configuration defines an instance name, Spring Boot tries to locate an existing instance rather than creating a new one.
 
@@ -6212,14 +6232,6 @@ You could also specify the Hazelcast configuration file to use through configura
 Otherwise, Spring Boot tries to find the Hazelcast configuration from the default locations: `hazelcast.xml` in the working directory or at the root of the classpath, or a `.yaml` counterpart in the same locations.
 We also check if the `hazelcast.config` system property is set.
 See the https://docs.hazelcast.org/docs/latest/manual/html-single/[Hazelcast documentation] for more details.
-
-If `hazelcast-client` is present on the classpath, Spring Boot first attempts to create a client by checking the following configuration options:
-
-* The presence of a `com.hazelcast.client.config.ClientConfig` bean.
-* A configuration file defined by the configprop:spring.hazelcast.config[] property.
-* The presence of the `hazelcast.client.config` system property.
-* A `hazelcast-client.xml` in the working directory or at the root of the classpath.
-* A `hazelcast-client.yaml` in the working directory or at the root of the classpath.
 
 NOTE: Spring Boot also has <<boot-features-caching-provider-hazelcast,explicit caching support for Hazelcast>>.
 If caching is enabled, the `HazelcastInstance` is automatically wrapped in a `CacheManager` implementation.
