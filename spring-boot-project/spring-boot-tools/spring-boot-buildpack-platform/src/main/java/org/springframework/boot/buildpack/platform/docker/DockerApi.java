@@ -26,6 +26,7 @@ import java.util.List;
 
 import org.apache.http.client.utils.URIBuilder;
 
+import org.springframework.boot.buildpack.platform.docker.configuration.DockerConfiguration;
 import org.springframework.boot.buildpack.platform.docker.transport.HttpTransport;
 import org.springframework.boot.buildpack.platform.docker.transport.HttpTransport.Response;
 import org.springframework.boot.buildpack.platform.docker.type.ContainerConfig;
@@ -68,7 +69,16 @@ public class DockerApi {
 	 * Create a new {@link DockerApi} instance.
 	 */
 	public DockerApi() {
-		this(HttpTransport.create());
+		this(new DockerConfiguration());
+	}
+
+	/**
+	 * Create a new {@link DockerApi} instance.
+	 * @param dockerConfiguration the docker configuration
+	 * @since 2.4.0
+	 */
+	public DockerApi(DockerConfiguration dockerConfiguration) {
+		this(HttpTransport.create(dockerConfiguration));
 	}
 
 	/**

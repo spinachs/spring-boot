@@ -97,10 +97,15 @@ class MetadataGenerationEnvironment {
 
 	private final String nameAnnotation;
 
+	private final String importAsConfigurationPropertiesBeanAnnotation;
+
+	private final String importAsConfigurationPropertiesBeansAnnotation;
+
 	MetadataGenerationEnvironment(ProcessingEnvironment environment, String configurationPropertiesAnnotation,
 			String nestedConfigurationPropertyAnnotation, String deprecatedConfigurationPropertyAnnotation,
 			String constructorBindingAnnotation, String defaultValueAnnotation, String endpointAnnotation,
-			String readOperationAnnotation, String nameAnnotation) {
+			String readOperationAnnotation, String nameAnnotation, String importAsConfigurationPropertiesBeanAnnotation,
+			String importAsConfigurationPropertiesBeansAnnotation) {
 		this.typeUtils = new TypeUtils(environment);
 		this.elements = environment.getElementUtils();
 		this.messager = environment.getMessager();
@@ -113,6 +118,8 @@ class MetadataGenerationEnvironment {
 		this.endpointAnnotation = endpointAnnotation;
 		this.readOperationAnnotation = readOperationAnnotation;
 		this.nameAnnotation = nameAnnotation;
+		this.importAsConfigurationPropertiesBeanAnnotation = importAsConfigurationPropertiesBeanAnnotation;
+		this.importAsConfigurationPropertiesBeansAnnotation = importAsConfigurationPropertiesBeansAnnotation;
 	}
 
 	private static FieldValuesParser resolveFieldValuesParser(ProcessingEnvironment env) {
@@ -258,6 +265,14 @@ class MetadataGenerationEnvironment {
 		return this.elements.getTypeElement(this.configurationPropertiesAnnotation);
 	}
 
+	TypeElement getImportAsConfigurationPropertiesBeansAnnotation() {
+		return this.elements.getTypeElement(this.importAsConfigurationPropertiesBeanAnnotation);
+	}
+
+	TypeElement getImportAsConfigurationPropertiesBeansAnnotationElement() {
+		return this.elements.getTypeElement(this.importAsConfigurationPropertiesBeansAnnotation);
+	}
+
 	AnnotationMirror getConfigurationPropertiesAnnotation(Element element) {
 		return getAnnotation(element, this.configurationPropertiesAnnotation);
 	}
@@ -280,6 +295,22 @@ class MetadataGenerationEnvironment {
 
 	AnnotationMirror getNameAnnotation(Element element) {
 		return getAnnotation(element, this.nameAnnotation);
+	}
+
+	List<AnnotationMirror> getImportAsConfigurationPropertiesBeanAnnotations(Element element) {
+		List<AnnotationMirror> annotations = new ArrayList<>();
+		AnnotationMirror importBean = getAnnotation(element, this.importAsConfigurationPropertiesBeanAnnotation);
+		if (importBean != null) {
+			annotations.add(importBean);
+		}
+		AnnotationMirror importBeans = getAnnotation(element, this.importAsConfigurationPropertiesBeansAnnotation);
+		if (importBeans != null) {
+			AnnotationValue value = importBeans.getElementValues().values().iterator().next();
+			for (Object contained : (List<?>) value.getValue()) {
+				annotations.add((AnnotationMirror) contained);
+			}
+		}
+		return Collections.unmodifiableList(annotations);
 	}
 
 	boolean hasNullableAnnotation(Element element) {

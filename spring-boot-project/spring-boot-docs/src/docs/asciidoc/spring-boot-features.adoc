@@ -444,6 +444,38 @@ TIP: If you want to know on which HTTP port the application is running, get the 
 
 
 
+[[boot-features-application-startup-tracking]]
+=== Application Startup tracking
+During the application startup, the `SpringApplication` and the `ApplicationContext` perform many tasks related to the application lifecycle,
+the beans lifecycle or even processing application events.
+With {spring-framework-api}/core/metrics/ApplicationStartup.html[ApplicationStartup`], Spring Framework  {spring-framework-docs}/core.html#context-functionality-startup[allows you track the application startup sequence with `StartupStep`s].
+This data can be collected for profiling purposes, or just to have a better understanding of an application startup process.
+
+You can choose an `ApplicationStartup` implementation when setting up the `SpringApplication` instance.
+For example, to use the `BufferingApplicationStartup`, you could write:
+
+[source,java,indent=0]
+----
+	public static void main(String[] args) {
+		SpringApplication app = new SpringApplication(MySpringConfiguration.class);
+		app.setApplicationStartup(new BufferingApplicationStartup(2048));
+		app.run(args);
+	}
+----
+
+The first available implementation, `FlightRecorderApplicationStartup` is provided by Spring Framework.
+It adds Spring-specific startup events to a Java Flight Recorder session and is meant for profiling applications and correlating their Spring context lifecycle with JVM events (such as allocations, GCs, class loading...).
+Once configured, you can record data by running the application with the Flight Recorder enabled:
+
+[source,bash,indent=0]
+----
+	$ java -XX:StartFlightRecording:filename=recording.jfr,duration=10s -jar demo.jar
+----
+
+Spring Boot ships with the `BufferingApplicationStartup` variant; this implementation is meant for buffering the startup steps and draining them into an external metrics system.
+Applications can ask for the bean of type `BufferingApplicationStartup` in any component.
+Additionally, Spring Boot Actuator will <<production-ready-features.adoc#production-ready-endpoints, expose a `startup` endpoint to expose this information as a JSON document>>.
+
 [[boot-features-external-config]]
 == Externalized Configuration
 Spring Boot lets you externalize your configuration so that you can work with the same application code in different environments.
@@ -637,7 +669,7 @@ Set the value to `ignore` using `SpringApplication.setDefaultProperties(...)` or
 [[boot-features-external-config-files-wildcards]]
 ==== Wildcard Locations
 If a config file location includes the `{asterisk}` character for the last path segment, it is considered a wildcard location.
-Wildcards are expanded when the config is loaded so that immediate subdirectories are are also checked.
+Wildcards are expanded when the config is loaded so that immediate subdirectories are also checked.
 Wildcard locations are particularly useful in an environment such as Kubernetes when there are multiple sources of config properties.
 
 For example, if you have some Redis configuration and some MySQL configuration, you might want to keep those two pieces of configuration separate, while requiring that both those are present in an `application.properties` file.
@@ -823,7 +855,7 @@ See the <<boot-features-external-config-file-activation-properties, next section
 It's sometimes useful to only activate a given get of properties when certain conditions are met.
 For example, you might have properties that are only relevant when a specific profile is active.
 
-You can conditionally active a properties document using `spring.config.activate.*`.
+You can conditionally activate a properties document using `spring.config.activate.*`.
 
 The following activation properties are available:
 
@@ -1195,7 +1227,7 @@ Spring Boot provides infrastructure to bind `@ConfigurationProperties` types and
 You can either enable configuration properties on a class-by-class basis or enable configuration property scanning that works in a similar manner to component scanning.
 
 Sometimes, classes annotated with `@ConfigurationProperties` might not be suitable for scanning, for example, if you're developing your own auto-configuration or you want to enable them conditionally.
-In these cases, specify the list of types to process using the `@EnableConfigurationProperties` annotation.
+In these cases, specify the list of types to process using the `@EnableConfigurationProperties` or `@ImportAsConfigurationPropertiesBean` annotations.
 This can be done on any `@Configuration` class, as shown in the following example:
 
 [source,java,indent=0]
@@ -1221,7 +1253,7 @@ If you want to define specific packages to scan, you can do so as shown in the f
 
 [NOTE]
 ====
-When the `@ConfigurationProperties` bean is registered using configuration property scanning or via `@EnableConfigurationProperties`, the bean has a conventional name: `<prefix>-<fqn>`, where `<prefix>` is the environment key prefix specified in the `@ConfigurationProperties` annotation and `<fqn>` is the fully qualified name of the bean.
+When the `@ConfigurationProperties` bean is registered using configuration property scanning or via `@EnableConfigurationProperties` or `@ImportAsConfigurationPropertiesBean`, the bean has a conventional name: `<prefix>-<fqn>`, where `<prefix>` is the environment key prefix specified in the `@ConfigurationProperties` annotation and `<fqn>` is the fully qualified name of the bean.
 If the annotation does not provide any prefix, only the fully qualified name of the bean is used.
 
 The bean name in the example above is `acme-com.example.AcmeProperties`.
@@ -1293,12 +1325,26 @@ To configure a bean from the `Environment` properties, add `@ConfigurationProper
 ----
 	@ConfigurationProperties(prefix = "another")
 	@Bean
-	public AnotherComponent anotherComponent() {
+	public ExampleItem exampleItem() {
 		...
 	}
 ----
 
-Any JavaBean property defined with the `another` prefix is mapped onto that `AnotherComponent` bean in manner similar to the preceding `AcmeProperties` example.
+Any JavaBean property defined with the `another` prefix is mapped onto that `ExampleItem` bean in manner similar to the preceding `AcmeProperties` example.
+
+If you want to use constructor binding with a third-party class, you can't use a `@Bean` method since Spring will need to create the object instance.
+For those situations, you can use an `@ImportAsConfigurationPropertiesBean` annotation on your `@Configuration` or `@SpringBootApplication` class.
+
+[source,java,indent=0]
+----
+	@SpringBootApplication
+	@ImportAsConfigurationPropertiesBean(type = ExampleItem.class, prefix = "another")
+	public class MyApp {
+		...
+	}
+----
+
+TIP: `@ImportAsConfigurationPropertiesBean` also works for JavaBean bindings as long as the type has a single no-arg constructor
 
 
 
@@ -2619,11 +2665,10 @@ There are several <<boot-features-jsp-limitations, known limitations>> when usin
 
 When you use one of these templating engines with the default configuration, your templates are picked up automatically from `src/main/resources/templates`.
 
-TIP: Depending on how you run your application, IntelliJ IDEA orders the classpath differently.
+TIP: Depending on how you run your application, your IDE may order the classpath differently.
 Running your application in the IDE from its main method results in a different ordering than when you run your application by using Maven or Gradle or from its packaged jar.
-This can cause Spring Boot to fail to find the templates on the classpath.
+This can cause Spring Boot to fail to find the expected template.
 If you have this problem, you can reorder the classpath in the IDE to place the module's classes and resources first.
-Alternatively, you can configure the template prefix to search every `templates` directory on the classpath, as follows: `classpath*:/templates/`.
 
 
 
@@ -4203,7 +4248,7 @@ The following example shows how to manually override the database port while the
 	}
 ----
 
-The following examples shows how to set some PostgreSQL connection options:
+The following examples show how to set some PostgreSQL connection options:
 
 [source,java,indent=0]
 ----
@@ -4332,7 +4377,7 @@ There is a `spring-boot-starter-data-redis` "`Starter`" for collecting the depen
 By default, it uses https://github.com/lettuce-io/lettuce-core/[Lettuce].
 That starter handles both traditional and reactive applications.
 
-TIP: we also provide a `spring-boot-starter-data-redis-reactive` "`Starter`" for consistency with the other stores with reactive support.
+TIP: We also provide a `spring-boot-starter-data-redis-reactive` "`Starter`" for consistency with the other stores with reactive support.
 
 
 
@@ -4660,9 +4705,10 @@ Spring Boot provides a dedicated "`Starter`", `spring-boot-starter-data-elastics
 [[boot-features-connecting-to-elasticsearch-rest]]
 ==== Connecting to Elasticsearch using REST clients
 Elasticsearch ships https://www.elastic.co/guide/en/elasticsearch/client/java-rest/current/index.html[two different REST clients] that you can use to query a cluster: the "Low Level" client and the "High Level" client.
+Spring Boot provides support for the "High Level" client, which ships with `org.elasticsearch.client:elasticsearch-rest-high-level-client`.
 
-If you have the `org.elasticsearch.client:elasticsearch-rest-client` dependency on the classpath, Spring Boot will auto-configure and register a `RestClient` bean that by default targets `http://localhost:9200`.
-You can further tune how `RestClient` is configured, as shown in the following example:
+If you have this dependency on the classpath, Spring Boot will auto-configure and register a `RestHighLevelClient` bean that by default targets `http://localhost:9200`.
+You can further tune how `RestHighLevelClient` is configured, as shown in the following example:
 
 [source,properties,indent=0,configprops]
 ----
@@ -4675,8 +4721,7 @@ You can further tune how `RestClient` is configured, as shown in the following e
 You can also register an arbitrary number of beans that implement `RestClientBuilderCustomizer` for more advanced customizations.
 To take full control over the registration, define a `RestClientBuilder` bean.
 
-If you have the `org.elasticsearch.client:elasticsearch-rest-high-level-client` dependency on the classpath, Spring Boot will auto-configure a `RestHighLevelClient`, which leverages any existing `RestClientBuilder` bean, reusing its HTTP configuration.
-
+TIP: If your application needs access to a "Low Level" `RestClient`, you can get it by calling `client.getLowLevelClient()` on the auto-configured `RestHighLevelClient`.
 
 [[boot-features-connecting-to-elasticsearch-reactive-rest]]
 ==== Connecting to Elasticsearch using Reactive REST clients
@@ -5929,7 +5974,16 @@ The following example shows a customizer that configures the use of a proxy for 
 include::{code-examples}/web/client/RestTemplateProxyCustomizationExample.java[tag=customizer]
 ----
 
-Finally, the most extreme (and rarely used) option is to create your own `RestTemplateBuilder` bean.
+Finally, you can also create your own `RestTemplateBuilder` bean.
+To prevent switching off the auto-configuration of a `RestTemplateBuilder` and prevent any `RestTemplateCustomizer` beans from being used, make sure to configure your custom instance with a `RestTemplateBuilderConfigurer`.
+The following example exposes a `RestTemplateBuilder` with what Spring Boot would auto-configure, except that custom connect and read timeouts are also specified:
+
+[source,java,indent=0]
+----
+include::{code-examples}/web/client/RestTemplateBuilderCustomizationExample.java[tag=customizer]
+----
+
+The most extreme (and rarely used) option is to create your own `RestTemplateBuilder` bean without using a configurer.
 Doing so switches off the auto-configuration of a `RestTemplateBuilder` and prevents any `RestTemplateCustomizer` beans from being used.
 
 
@@ -6153,6 +6207,18 @@ The {spring-boot-module-code}/jta/atomikos/AtomikosXAConnectionFactoryWrapper.ja
 == Hazelcast
 If https://hazelcast.com/[Hazelcast] is on the classpath and a suitable configuration is found, Spring Boot auto-configures a `HazelcastInstance` that you can inject in your application.
 
+Spring Boot first attempts to create a client by checking the following configuration options:
+
+* The presence of a `com.hazelcast.client.config.ClientConfig` bean.
+* A configuration file defined by the configprop:spring.hazelcast.config[] property.
+* The presence of the `hazelcast.client.config` system property.
+* A `hazelcast-client.xml` in the working directory or at the root of the classpath.
+* A `hazelcast-client.yaml` in the working directory or at the root of the classpath.
+
+NOTE: Spring Boot supports both Hazelcast 4 and Hazelcast 3.
+If you downgrade to Hazelcast 3, `hazelcast-client` should be added to the classpath to configure a client.
+
+If a client can't be created, Spring Boot attempts to configure an embedded server.
 If you define a `com.hazelcast.config.Config` bean, Spring Boot uses that.
 If your configuration defines an instance name, Spring Boot tries to locate an existing instance rather than creating a new one.
 
@@ -6166,14 +6232,6 @@ You could also specify the Hazelcast configuration file to use through configura
 Otherwise, Spring Boot tries to find the Hazelcast configuration from the default locations: `hazelcast.xml` in the working directory or at the root of the classpath, or a `.yaml` counterpart in the same locations.
 We also check if the `hazelcast.config` system property is set.
 See the https://docs.hazelcast.org/docs/latest/manual/html-single/[Hazelcast documentation] for more details.
-
-If `hazelcast-client` is present on the classpath, Spring Boot first attempts to create a client by checking the following configuration options:
-
-* The presence of a `com.hazelcast.client.config.ClientConfig` bean.
-* A configuration file defined by the configprop:spring.hazelcast.config[] property.
-* The presence of the `hazelcast.client.config` system property.
-* A `hazelcast-client.xml` in the working directory or at the root of the classpath.
-* A `hazelcast-client.yaml` in the working directory or at the root of the classpath.
 
 NOTE: Spring Boot also has <<boot-features-caching-provider-hazelcast,explicit caching support for Hazelcast>>.
 If caching is enabled, the `HazelcastInstance` is automatically wrapped in a `CacheManager` implementation.
@@ -6810,7 +6868,8 @@ assertThat(json.write(message))
 ==== Auto-configured Spring MVC Tests
 To test whether Spring MVC controllers are working as expected, use the `@WebMvcTest` annotation.
 `@WebMvcTest` auto-configures the Spring MVC infrastructure and limits scanned beans to `@Controller`, `@ControllerAdvice`, `@JsonComponent`, `Converter`, `GenericConverter`, `Filter`, `HandlerInterceptor`, `WebMvcConfigurer`, and `HandlerMethodArgumentResolver`.
-Regular `@Component` beans are not scanned when using this annotation.
+Regular `@Component` and `@ConfigurationProperties` beans are not scanned when the `@WebMvcTest` annotation is used.
+`@EnableConfigurationProperties` can be used to include `@ConfigurationProperties` beans.
 
 TIP: A list of the auto-configuration settings that are enabled by `@WebMvcTest` can be <<appendix-test-auto-configuration.adoc#test-auto-configuration,found in the appendix>>.
 
@@ -6910,7 +6969,8 @@ TIP: Sometimes writing Spring MVC tests is not enough; Spring Boot can help you 
 ==== Auto-configured Spring WebFlux Tests
 To test that {spring-framework-docs}/web-reactive.html[Spring WebFlux] controllers are working as expected, you can use the `@WebFluxTest` annotation.
 `@WebFluxTest` auto-configures the Spring WebFlux infrastructure and limits scanned beans to `@Controller`, `@ControllerAdvice`, `@JsonComponent`, `Converter`, `GenericConverter`, `WebFilter`, and `WebFluxConfigurer`.
-Regular `@Component` beans are not scanned when the `@WebFluxTest` annotation is used.
+Regular `@Component` and `@ConfigurationProperties` beans are not scanned when the `@WebFluxTest` annotation is used.
+`@EnableConfigurationProperties` can be used to include `@ConfigurationProperties` beans.
 
 TIP: A list of the auto-configurations that are enabled by `@WebFluxTest` can be <<appendix-test-auto-configuration.adoc#test-auto-configuration,found in the appendix>>.
 
@@ -6970,7 +7030,8 @@ TIP: Sometimes writing Spring WebFlux tests is not enough; Spring Boot can help 
 ==== Auto-configured Data Cassandra Tests
 You can use `@DataCassandraTest` to test Cassandra applications.
 By default, it configures a `CassandraTemplate`, scans for `@Table` classes, and configures Spring Data Cassandra repositories.
-Regular `@Component` beans are not loaded into the `ApplicationContext`.
+Regular `@Component` and `@ConfigurationProperties` beans are not scanned when the `@DataCassandraTest` annotation is used.
+`@EnableConfigurationProperties` can be used to include `@ConfigurationProperties` beans.
 (For more about using Cassandra with Spring Boot, see "<<boot-features-cassandra>>", earlier in this chapter.)
 
 TIP: A list of the auto-configuration settings that are enabled by `@DataCassandraTest` can be <<appendix-test-auto-configuration.adoc#test-auto-configuration,found in the appendix>>.
@@ -6999,7 +7060,8 @@ The following example shows a typical setup for using Cassandra tests in Spring 
 You can use the `@DataJpaTest` annotation to test JPA applications.
 By default, it scans for `@Entity` classes and configures Spring Data JPA repositories.
 If an embedded database is available on the classpath, it configures one as well.
-Regular `@Component` beans are not loaded into the `ApplicationContext`.
+Regular `@Component` and `@ConfigurationProperties` beans are not scanned when the `@DataJpaTest` annotation is used.
+`@EnableConfigurationProperties` can be used to include `@ConfigurationProperties` beans.
 
 TIP: A list of the auto-configuration settings that are enabled by `@DataJpaTest` can be <<appendix-test-auto-configuration.adoc#test-auto-configuration,found in the appendix>>.
 
@@ -7073,7 +7135,8 @@ If, however, you prefer to run tests against a real database you can use the `@A
 ==== Auto-configured JDBC Tests
 `@JdbcTest` is similar to `@DataJpaTest` but is for tests that only require a `DataSource` and do not use Spring Data JDBC.
 By default, it configures an in-memory embedded database and a `JdbcTemplate`.
-Regular `@Component` beans are not loaded into the `ApplicationContext`.
+Regular `@Component` and `@ConfigurationProperties` beans are not scanned when the `@JdbcTest` annotation is used.
+`@EnableConfigurationProperties` can be used to include `@ConfigurationProperties` beans.
 
 TIP: A list of the auto-configurations that are enabled by `@JdbcTest` can be <<appendix-test-auto-configuration.adoc#test-auto-configuration,found in the appendix>>.
 
@@ -7104,7 +7167,8 @@ If you prefer your test to run against a real database, you can use the `@AutoCo
 ==== Auto-configured Data JDBC Tests
 `@DataJdbcTest` is similar to `@JdbcTest` but is for tests that use Spring Data JDBC repositories.
 By default, it configures an in-memory embedded database, a `JdbcTemplate`, and Spring Data JDBC repositories.
-Regular `@Component` beans are not loaded into the `ApplicationContext`.
+Regular `@Component` and `@ConfigurationProperties` beans are not scanned when the `@DataJdbcTest` annotation is used.
+`@EnableConfigurationProperties` can be used to include `@ConfigurationProperties` beans.
 
 TIP: A list of the auto-configurations that are enabled by `@DataJdbcTest` can be <<appendix-test-auto-configuration.adoc#test-auto-configuration,found in the appendix>>.
 
@@ -7123,12 +7187,12 @@ You can use `@JooqTest` in a similar fashion as `@JdbcTest` but for jOOQ-related
 As jOOQ relies heavily on a Java-based schema that corresponds with the database schema, the existing `DataSource` is used.
 If you want to replace it with an in-memory database, you can use `@AutoConfigureTestDatabase` to override those settings.
 (For more about using jOOQ with Spring Boot, see "<<boot-features-jooq>>", earlier in this chapter.)
-Regular `@Component` beans are not loaded into the `ApplicationContext`.
+Regular `@Component` and `@ConfigurationProperties` beans are not scanned when the `@JooqTest` annotation is used.
+`@EnableConfigurationProperties` can be used to include `@ConfigurationProperties` beans.
 
 TIP: A list of the auto-configurations that are enabled by `@JooqTest` can be <<appendix-test-auto-configuration.adoc#test-auto-configuration,found in the appendix>>.
 
 `@JooqTest` configures a `DSLContext`.
-Regular `@Component` beans are not loaded into the `ApplicationContext`.
 The following example shows the `@JooqTest` annotation in use:
 
 [source,java,indent=0]
@@ -7154,7 +7218,8 @@ If that is not what you want, you can disable transaction management for a test 
 ==== Auto-configured Data MongoDB Tests
 You can use `@DataMongoTest` to test MongoDB applications.
 By default, it configures an in-memory embedded MongoDB (if available), configures a `MongoTemplate`, scans for `@Document` classes, and configures Spring Data MongoDB repositories.
-Regular `@Component` beans are not loaded into the `ApplicationContext`.
+Regular `@Component` and `@ConfigurationProperties` beans are not scanned when the `@DataMongoTest` annotation is used.
+`@EnableConfigurationProperties` can be used to include `@ConfigurationProperties` beans.
 (For more about using MongoDB with Spring Boot, see "<<boot-features-mongodb>>", earlier in this chapter.)
 
 TIP: A list of the auto-configuration settings that are enabled by `@DataMongoTest` can be <<appendix-test-auto-configuration.adoc#test-auto-configuration,found in the appendix>>.
@@ -7197,7 +7262,8 @@ If, however, you prefer to run tests against a real MongoDB server, you should e
 ==== Auto-configured Data Neo4j Tests
 You can use `@DataNeo4jTest` to test Neo4j applications.
 By default, it scans for `@Node` classes, and configures Spring Data Neo4j repositories.
-Regular `@Component` beans are not loaded into the `ApplicationContext`.
+Regular `@Component` and `@ConfigurationProperties` beans are not scanned when the `@DataNeo4jTest` annotation is used.
+`@EnableConfigurationProperties` can be used to include `@ConfigurationProperties` beans.
 (For more about using Neo4J with Spring Boot, see "<<boot-features-neo4j>>", earlier in this chapter.)
 
 TIP: A list of the auto-configuration settings that are enabled by `@DataNeo4jTest` can be <<appendix-test-auto-configuration.adoc#test-auto-configuration,found in the appendix>>.
@@ -7242,7 +7308,8 @@ If that is not what you want, you can disable transaction management for a test 
 ==== Auto-configured Data Redis Tests
 You can use `@DataRedisTest` to test Redis applications.
 By default, it scans for `@RedisHash` classes and configures Spring Data Redis repositories.
-Regular `@Component` beans are not loaded into the `ApplicationContext`.
+Regular `@Component` and `@ConfigurationProperties` beans are not scanned when the `@DataRedisTest` annotation is used.
+`@EnableConfigurationProperties` can be used to include `@ConfigurationProperties` beans.
 (For more about using Redis with Spring Boot, see "<<boot-features-redis>>", earlier in this chapter.)
 
 TIP: A list of the auto-configuration settings that are enabled by `@DataRedisTest` can be <<appendix-test-auto-configuration.adoc#test-auto-configuration,found in the appendix>>.
@@ -7270,7 +7337,8 @@ The following example shows the `@DataRedisTest` annotation in use:
 ==== Auto-configured Data LDAP Tests
 You can use `@DataLdapTest` to test LDAP applications.
 By default, it configures an in-memory embedded LDAP (if available), configures an `LdapTemplate`, scans for `@Entry` classes, and configures Spring Data LDAP repositories.
-Regular `@Component` beans are not loaded into the `ApplicationContext`.
+Regular `@Component` and `@ConfigurationProperties` beans are not scanned when the `@DataLdapTest` annotation is used.
+`@EnableConfigurationProperties` can be used to include `@ConfigurationProperties` beans.
 (For more about using LDAP with Spring Boot, see "<<boot-features-ldap>>", earlier in this chapter.)
 
 TIP: A list of the auto-configuration settings that are enabled by `@DataLdapTest` can be <<appendix-test-auto-configuration.adoc#test-auto-configuration,found in the appendix>>.
@@ -7313,7 +7381,8 @@ If, however, you prefer to run tests against a real LDAP server, you should excl
 ==== Auto-configured REST Clients
 You can use the `@RestClientTest` annotation to test REST clients.
 By default, it auto-configures Jackson, GSON, and Jsonb support, configures a `RestTemplateBuilder`, and adds support for `MockRestServiceServer`.
-Regular `@Component` beans are not loaded into the `ApplicationContext`.
+Regular `@Component` and `@ConfigurationProperties` beans are not scanned when the `@RestClientTest` annotation is used.
+`@EnableConfigurationProperties` can be used to include `@ConfigurationProperties` beans.
 
 TIP: A list of the auto-configuration settings that are enabled by `@RestClientTest` can be <<appendix-test-auto-configuration.adoc#test-auto-configuration,found in the appendix>>.
 

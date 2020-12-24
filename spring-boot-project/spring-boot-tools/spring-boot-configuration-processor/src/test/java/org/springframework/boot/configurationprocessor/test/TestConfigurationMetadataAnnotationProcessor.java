@@ -57,6 +57,10 @@ public class TestConfigurationMetadataAnnotationProcessor extends ConfigurationM
 
 	public static final String NAME_ANNOTATION = "org.springframework.boot.configurationsample.Name";
 
+	public static final String IMPORT_AS_CONFIGURATION_PROPERTIES_BEAN_ANNOATION = "org.springframework.boot.configurationsample.ImportAsConfigurationPropertiesBean";
+
+	public static final String IMPORT_AS_CONFIGURATION_PROPERTIES_BEANS_ANNOATION = "org.springframework.boot.configurationsample.ImportAsConfigurationPropertiesBeans";
+
 	private ConfigurationMetadata metadata;
 
 	private final File outputLocation;
@@ -103,6 +107,16 @@ public class TestConfigurationMetadataAnnotationProcessor extends ConfigurationM
 	@Override
 	protected String nameAnnotation() {
 		return NAME_ANNOTATION;
+	}
+
+	@Override
+	protected String importAsConfigurationPropertiesBeanAnnotation() {
+		return IMPORT_AS_CONFIGURATION_PROPERTIES_BEAN_ANNOATION;
+	}
+
+	@Override
+	protected String importAsConfigurationPropertiesBeansAnnotation() {
+		return IMPORT_AS_CONFIGURATION_PROPERTIES_BEANS_ANNOATION;
 	}
 
 	@Override

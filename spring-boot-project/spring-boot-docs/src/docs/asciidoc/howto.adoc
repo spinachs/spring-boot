@@ -1442,7 +1442,7 @@ And the following example shows one way to set up the starters in Gradle:
 
 NOTE: The Log4j starters gather together the dependencies for common logging requirements (such as having Tomcat use `java.util.logging` but configuring the output using Log4j 2).
 
-NOTE: To ensure that debug logging performed using `java.util.logging` is routed into Log4j 2, configure its https://logging.apache.org/log4j/2.0/log4j-jul/index.html[JDK logging adapter] by setting the `java.util.logging.manager` system property to `org.apache.logging.log4j.jul.LogManager`.
+NOTE: To ensure that debug logging performed using `java.util.logging` is routed into Log4j 2, configure its https://logging.apache.org/log4j/2.x/log4j-jul/index.html[JDK logging adapter] by setting the `java.util.logging.manager` system property to `org.apache.logging.log4j.jul.LogManager`.
 
 
 
@@ -2232,10 +2232,13 @@ Information returned by the `env` and `configprops` endpoints can be somewhat se
 
 The patterns to use can be customized using the `management.endpoint.env.keys-to-sanitize` and `management.endpoint.configprops.keys-to-sanitize` respectively.
 
-Spring Boot uses sensible defaults for such keys: any key ending with the word "password", "secret", "key", "token", "vcap_services", "sun.java.command", "uri", "uris", "address" or "addresses" is sanitized.
-Additionally, any key that holds the word `credentials` as part of the key is sanitized (configured as a regular expression, i.e. `+.*credentials.*+`).
+Spring Boot uses sensible defaults for such keys: any key ending with the word "password", "secret", "key", "token", "vcap_services", "sun.java.command" is entirely sanitized.
+Additionally, any key that holds the word `credentials` as part of the key is sanitized (configured as a regular expression, i.e. `+*credentials.*+`).
 
-If any of the keys to sanitize are URI format (i.e. `<scheme>://<username>:<password>@<host>:<port>/`), only the password part is sanitized.
+Furthermore, Spring Boot only sanitizes the sensitive portion of URIs for keys which end with "uri", "uris", "address", or "addresses".
+The sensitive portion of the URI is identified using the format `<scheme>://<username>:<password>@<host>:<port>/`.
+For example, for the property `myclient.uri=http://user1:password1@localhost:8081`, the resulting sanitized value is
+`++http://user1:******@localhost:8081++`.
 
 
 

@@ -16,6 +16,7 @@
 
 package org.springframework.boot.autoconfigure.flyway;
 
+import java.sql.DatabaseMetaData;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -144,10 +145,6 @@ public class FlywayAutoConfiguration {
 				String user = getProperty(properties::getUser, dataSourceProperties::determineUsername);
 				String password = getProperty(properties::getPassword, dataSourceProperties::determinePassword);
 				configuration.dataSource(url, user, password);
-				if (!CollectionUtils.isEmpty(properties.getInitSqls())) {
-					String initSql = StringUtils.collectionToDelimitedString(properties.getInitSqls(), "\n");
-					configuration.initSql(initSql);
-				}
 			}
 			else if (flywayDataSource != null) {
 				configuration.dataSource(flywayDataSource);
@@ -209,6 +206,9 @@ public class FlywayAutoConfiguration {
 			map.from(properties.isSkipDefaultResolvers()).to(configuration::skipDefaultResolvers);
 			configureValidateMigrationNaming(configuration, properties.isValidateMigrationNaming());
 			map.from(properties.isValidateOnMigrate()).to(configuration::validateOnMigrate);
+			map.from(properties.getInitSqls()).whenNot(CollectionUtils::isEmpty)
+					.as((initSqls) -> StringUtils.collectionToDelimitedString(initSqls, "\n"))
+					.to(configuration::initSql);
 			// Pro properties
 			map.from(properties.getBatch()).whenNonNull().to(configuration::batch);
 			map.from(properties.getDryRunOutput()).whenNonNull().to(configuration::dryRunOutput);
@@ -408,7 +408,7 @@ public class FlywayAutoConfiguration {
 
 		private DatabaseDriver getDatabaseDriver() {
 			try {
-				String url = JdbcUtils.extractDatabaseMetaData(this.dataSource, "getURL");
+				String url = JdbcUtils.extractDatabaseMetaData(this.dataSource, DatabaseMetaData::getURL);
 				return DatabaseDriver.fromJdbcUrl(url);
 			}
 			catch (MetaDataAccessException ex) {
