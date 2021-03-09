@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors.
+ * Copyright 2012-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -260,6 +260,8 @@ public class SpringApplication {
 
 	private boolean lazyInitialization = false;
 
+	private String environmentPrefix;
+
 	private ApplicationContextFactory applicationContextFactory = ApplicationContextFactory.DEFAULT;
 
 	private ApplicationStartup applicationStartup = ApplicationStartup.DEFAULT;
@@ -392,7 +394,7 @@ public class SpringApplication {
 
 	private DefaultBootstrapContext createBootstrapContext() {
 		DefaultBootstrapContext bootstrapContext = new DefaultBootstrapContext();
-		this.bootstrappers.forEach((initializer) -> initializer.intitialize(bootstrapContext));
+		this.bootstrappers.forEach((initializer) -> initializer.initialize(bootstrapContext));
 		return bootstrapContext;
 	}
 
@@ -418,6 +420,9 @@ public class SpringApplication {
 		listeners.environmentPrepared(bootstrapContext, environment);
 		DefaultPropertiesPropertySource.moveToEnd(environment);
 		configureAdditionalProfiles(environment);
+		if (environment.getProperty("spring.main.environment-prefix") != null) {
+			throw new IllegalStateException("Environment prefix cannot be set via properties.");
+		}
 		bindToSpringApplication(environment);
 		if (!this.isCustomEnvironment) {
 			environment = new EnvironmentConverter(getClassLoader()).convertEnvironmentIfNecessary(environment,
@@ -511,7 +516,7 @@ public class SpringApplication {
 				// Not allowed in some environments.
 			}
 		}
-		refresh((ApplicationContext) context);
+		refresh(context);
 	}
 
 	/**
@@ -642,7 +647,9 @@ public class SpringApplication {
 	 */
 	protected void configurePropertySources(ConfigurableEnvironment environment, String[] args) {
 		MutablePropertySources sources = environment.getPropertySources();
-		DefaultPropertiesPropertySource.ifNotEmpty(this.defaultProperties, sources::addLast);
+		if (!CollectionUtils.isEmpty(this.defaultProperties)) {
+			DefaultPropertiesPropertySource.addOrMerge(this.defaultProperties, sources);
+		}
 		if (this.addCommandLineProperties && args.length > 0) {
 			String name = CommandLinePropertySource.COMMAND_LINE_PROPERTY_SOURCE_NAME;
 			//name存在则替换，否则添加到第一个。
@@ -917,18 +924,6 @@ public class SpringApplication {
 	 * 执行ApplicationContext类refresh方法。
 	 * todo 要去看看这个刷新具体做了什么
 	 *
-	 * Refresh the underlying {@link ApplicationContext}.
-	 * @param applicationContext the application context to refresh
-	 * @deprecated since 2.3.0 in favor of
-	 * {@link #refresh(ConfigurableApplicationContext)}
-	 */
-	@Deprecated
-	protected void refresh(ApplicationContext applicationContext) {
-		Assert.isInstanceOf(ConfigurableApplicationContext.class, applicationContext);
-		refresh((ConfigurableApplicationContext) applicationContext);
-	}
-
-	/**
 	 * Refresh the underlying {@link ApplicationContext}.
 	 * @param applicationContext the application context to refresh
 	 */
@@ -1365,6 +1360,14 @@ public class SpringApplication {
 		this.resourceLoader = resourceLoader;
 	}
 
+	public String getEnvironmentPrefix() {
+		return this.environmentPrefix;
+	}
+
+	public void setEnvironmentPrefix(String environmentPrefix) {
+		this.environmentPrefix = environmentPrefix;
+	}
+
 	/**
 	 * Sets the type of Spring {@link ApplicationContext} that will be created. If not
 	 * specified defaults to {@link #DEFAULT_SERVLET_WEB_CONTEXT_CLASS} for web based
@@ -1453,6 +1456,7 @@ public class SpringApplication {
 	/**
 	 * Set the {@link ApplicationStartup} to use for collecting startup metrics.
 	 * @param applicationStartup the application startup to use
+	 * @since 2.4.0
 	 */
 	public void setApplicationStartup(ApplicationStartup applicationStartup) {
 		this.applicationStartup = (applicationStartup != null) ? applicationStartup : ApplicationStartup.DEFAULT;
@@ -1461,6 +1465,7 @@ public class SpringApplication {
 	/**
 	 * Returns the {@link ApplicationStartup} used for collecting startup metrics.
 	 * @return the application startup
+	 * @since 2.4.0
 	 */
 	public ApplicationStartup getApplicationStartup() {
 		return this.applicationStartup;
